@@ -18,7 +18,7 @@
  */
 
 #include <cx9r.h>
-#include <stream.h>
+#include "stream.h"
 #include "sha256.h"
 #include "aes256.h"
 #include "base64.h"
@@ -101,7 +101,7 @@ static uint64_t lsb_to_uint64(uint8_t *b) {
 static cx9r_err kdbx_read_magic(cx9r_stream_t *stream) {
 	uint8_t const kdbx_magic[KDBX_MAGIC_LENGTH] = { 0x03, 0xd9, 0xa2, 0x9a,
 			0x67, 0xfb, 0x4b, 0xb5 };
-
+printf("Reading magic...");
 	uint8_t magic[KDBX_MAGIC_LENGTH];
 
 	// default return value
@@ -116,7 +116,7 @@ static cx9r_err kdbx_read_magic(cx9r_stream_t *stream) {
 			CX9R_BAD_MAGIC, kdbx_magic_bail);
 
 	kdbx_magic_bail:
-
+printf("%016lX  (%d)\n", *(uint64_t*)&magic, err);
 	return err;
 }
 
@@ -852,7 +852,7 @@ cx9r_err cx9r_init() {
 	return CX9R_OK;
 }
 
-cx9r_err cx9r_kdbx_read(FILE *f, char *passphrase) {
+cx9r_err cx9r_kdbx_read(FILE *f, char *passphrase, int dump_xml) {
 	cx9r_err err = CX9R_OK;
 	ckpr_ctx_impl *ctx;
 	cx9r_stream_t *stream;
@@ -869,21 +869,21 @@ cx9r_err cx9r_kdbx_read(FILE *f, char *passphrase) {
 	CHEQ(((err = kdbx_read_magic(stream)) == CX9R_OK), cleanup_stream);
 
 	CHEQ(((err = kdbx_read_version(stream)) == CX9R_OK), cleanup_stream);
-
+printf("Reading...");
 	CHECK(((ctx = ctx_alloc()) != NULL), err, CX9R_MEM_ALLOC_ERR,
 			cleanup_stream);
-
+printf("1 ");
 	CHEQ(((err = kdbx_read_header(stream, ctx)) == CX9R_OK), cleanup_ctx);
-
+printf("2 ");
 	CHEQ(((err = generate_key(ctx, passphrase)) == CX9R_OK), cleanup_ctx);
-
+printf("3 ");
 	CHECK(((decrypted_stream = cx9r_aes256_cbc_sopen(stream, ctx->key, ctx->iv)) != NULL),
 			err, CX9R_STREAM_OPEN_ERR, cleanup_ctx);
-
+printf("4 ");
 	stream = decrypted_stream;
 
 	CHEQ(((err = verify_start_bytes(stream, ctx)) == CX9R_OK), cleanup_ctx);
-
+printf("5 ");
 	CHECK(((hashed_stream = cx9r_hash_sopen(stream)) != NULL),
 				err, CX9R_STREAM_OPEN_ERR, cleanup_ctx);
 
@@ -897,14 +897,17 @@ cx9r_err cx9r_kdbx_read(FILE *f, char *passphrase) {
 
 //	o = fopen("raw.xml", "w");
 //
-//	while (!cx9r_seof(stream)) {
-//		n = cx9r_sread(buf, 1, 1027, stream);
-//		fwrite(buf, 1, n, o);
-//	}
-//
-//	fclose(o);
-	CHEQ(((err = parse_xml(stream, ctx)) == CX9R_OK), cleanup_ctx);
-
+    if (dump_xml) {
+        while (!cx9r_seof(stream)) {
+            n = cx9r_sread(buf, 1, 1027, stream);
+            fwrite(buf, 1, n, stdout);
+            //	fwrite(buf, 1, n, o);
+        }
+        //
+        //	fclose(o);
+    } else {
+        CHEQ(((err = parse_xml(stream, ctx)) == CX9R_OK), cleanup_ctx);
+    }
 cleanup_ctx:
 	ctx_free(ctx);
 

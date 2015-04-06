@@ -23,33 +23,36 @@
 
 enum cx9r_err_enum {
 	CX9R_OK,
-	CX9R_BAD_MAGIC,				// incorrect magic bytes
-	CX9R_UNSUPPORTED_VERSION,	// unsupported file version
-	CX9R_FILE_READ_ERR,			// error while reading file
-	CX9R_MEM_ALLOC_ERR,			// memory allocation error
-	CX9R_UNKNOWN_CIPHER,		// unknown cipher algorithm
-	CX9R_UNKNOWN_COMPRESSION,	// unknown compression algorithm
-	CX9R_WRONG_MASTER_SEED_LENGTH, // wrong length of master seed
-	// wrong length of # of transformation rounds field
+	CX9R_BAD_MAGIC,				// incorrect magic bytes 1
+	CX9R_UNSUPPORTED_VERSION,	// unsupported file version 2
+	CX9R_FILE_READ_ERR,			// error while reading file 3
+	CX9R_MEM_ALLOC_ERR,			// memory allocation error 4
+	CX9R_UNKNOWN_CIPHER,		// unknown cipher algorithm 5
+	CX9R_UNKNOWN_COMPRESSION,	// unknown compression algorithm 6
+	CX9R_WRONG_MASTER_SEED_LENGTH, // wrong length of master seed 7
+	// wrong length of # of transformation rounds field 8
 	CX9R_WRONG_N_TRANSFORM_ROUNDS_LENGTH,
-	CX9R_WRONG_IV_LENGTH,		// wrong length of IV
-	// wrong length of stream start bytes
+	CX9R_WRONG_IV_LENGTH,		// wrong length of IV 9
+	// wrong length of stream start bytes 10
 	CX9R_WRONG_STREAM_START_BYTES_LENGTH,
-	// wrong length of inner random stream id
+	// wrong length of inner random stream id 11
 	CX9R_WRONG_INNER_RANDOM_STREAM_ID_LENGTH,
-	CX9R_BAD_HEADER_FIELD_ID,	// bad header field id
-	CX9R_INIT_FAILURE,          // initalization failed
-	CX9R_SHA256_FAILURE,		// sha256 computation failed
-	CX9R_AES256_FAILURE,		// aes256 operation failed
-	CX9R_KEY_VERIFICATION_FAILED, // failed to verify key
-	CX9R_STREAM_OPEN_ERR,		// error opening stream
-	CX9R_PARSE_ERR				// parsing error
+	CX9R_BAD_HEADER_FIELD_ID,	// bad header field id 12 
+	CX9R_INIT_FAILURE,          // initalization failed 13
+	CX9R_SHA256_FAILURE,		// sha256 computation failed 14
+	CX9R_AES256_FAILURE,		// aes256 operation failed 15
+	CX9R_KEY_VERIFICATION_FAILED, // failed to verify key 16
+	CX9R_STREAM_OPEN_ERR,		// error opening stream 17
+	CX9R_PARSE_ERR				// parsing error 18
 };
+
+#define FLAG_DUMP_XML 2
+
 
 typedef enum cx9r_err_enum cx9r_err;	// return code
 typedef void * cx9r_ctx;		// context
 
 cx9r_err cx9r_init();
-cx9r_err cx9r_kdbx_read(FILE *f, char *passphrase);
+cx9r_err cx9r_kdbx_read(FILE *f, char *passphrase, int flags);
 
 #endif
