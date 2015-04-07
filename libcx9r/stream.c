@@ -31,6 +31,7 @@
 // stream read
 size_t cx9r_sread(void *ptr, size_t size, size_t nmemb, cx9r_stream_t *stream) {
 	if (cx9r_seof(stream) || cx9r_serror(stream)) {
+        DEBUG("EOF=%d ERR=%d\n", cx9r_seof(stream),cx9r_serror(stream));
 		return 0;
 	}
 	return stream->sread(ptr, size, nmemb, stream);
@@ -274,7 +275,7 @@ static void aes256_cbc_fill_buf(aes256_cbc_data_t *data) {
 
 	// stream must be an even multiple of the AES block length
 	if (((data->total + bytes_read) % CX9R_AES256_BLOCK_LENGTH) != 0) {
-		data->error = 1;
+		data->error = 1;DEBUG("err: stream must be an even multiple of the AES block length\n");
 		return;
 	}
 
@@ -287,14 +288,14 @@ static void aes256_cbc_fill_buf(aes256_cbc_data_t *data) {
 	if ((bytes_read != bytes_to_read) && (data->total > 0)) {
 		// get padding length
 		pad_length = data->buf[data->total - 1];
-		if (pad_length > CX9R_AES256_BLOCK_LENGTH) {
-			data->error = 1;
+		/*if (pad_length > CX9R_AES256_BLOCK_LENGTH) {
+			data->error = 1;printf("err: padding length %d, %d\n", pad_length , CX9R_AES256_BLOCK_LENGTH);
 			return;
-		}
+		}*/
 		// check padding
 		for (i = 0; i < pad_length; i++) {
 			if (data->buf[data->total - i - 1] != pad_length) {
-				data->error = 1;
+				data->error = 1;DEBUG("err: check padding\n");
 				return;
 			}
 		}

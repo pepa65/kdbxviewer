@@ -17,6 +17,7 @@
  * along with cryptkeyper. If not, see <http://www.gnu.org/licenses/>.
  */
 
+
 #include <cx9r.h>
 #include "stream.h"
 #include "sha256.h"
@@ -29,6 +30,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+//global
+int g_enable_verbose = 0;
+
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
@@ -38,6 +42,11 @@
 #else
 #error libexpat is required to build kdbx.c
 #endif
+
+#if (BYTEORDER == 4321)
+#warning Wrong byteorder
+#endif
+
 
 // length of various kdbx file elements
 #define KDBX_MAGIC_LENGTH 8	// length of magic bytes
@@ -63,6 +72,7 @@
 #define ID_PROTECTED_STREAM_KEY 8	// protected stream key
 #define ID_STREAM_START_BYTES 9		// stream start bytes
 #define ID_INNER_RANDOM_STREAM_ID 10	// inner random stream ID
+char* HeaderFieldNames[] = { "ID_EOH","ID_COMMENT","ID_CIPHER","ID_COMPRESSION","ID_MASTER_SEED","ID_TRANSFORM_SEED","ID_N_TRANSFORM_ROUNDS","ID_IV","ID_PROTECTED_STREAM_KEY","ID_STREAM_START_BYTES","ID_INNER_RANDOM_STREAM_ID" };
 
 #define COMPRESSION_NONE 0	// no compression
 #define COMPRESSION_GZIP 1	// gzip compression
@@ -101,7 +111,7 @@ static uint64_t lsb_to_uint64(uint8_t *b) {
 static cx9r_err kdbx_read_magic(cx9r_stream_t *stream) {
 	uint8_t const kdbx_magic[KDBX_MAGIC_LENGTH] = { 0x03, 0xd9, 0xa2, 0x9a,
 			0x67, 0xfb, 0x4b, 0xb5 };
-printf("Reading magic...");
+DEBUG("Reading magic...");
 	uint8_t magic[KDBX_MAGIC_LENGTH];
 
 	// default return value
@@ -116,7 +126,7 @@ printf("Reading magic...");
 			CX9R_BAD_MAGIC, kdbx_magic_bail);
 
 	kdbx_magic_bail:
-printf("%016lX  (%d)\n", *(uint64_t*)&magic, err);
+DEBUG("%016lX  (%d)\n", *(uint64_t*)&magic, err);
 	return err;
 }
 
@@ -230,7 +240,8 @@ static cx9r_err kdbx_read_header(cx9r_stream_t *stream, ckpr_ctx_impl *ctx) {
 		CHECK((cx9r_sread(data, 1, size, stream) == size), err, CX9R_FILE_READ_ERR,
 				kdbx_read_header_cleanup_data);
 
-		//printf("id: %d, size: %d\n", id, size);
+		DEBUG("id: %d, field: %s, size: %d\n", id, HeaderFieldNames[id], size);
+        DEBUGHEX(data,size);
 		//dbg(data, size);
 
 		// there is nothing in the format stopping us from having multiple instances
@@ -562,7 +573,6 @@ int check_state_condition(parse_tag const *condition, parse_data const *stack_to
 static void start_element_handler(void *userData,
 		const XML_Char *name,
 		const XML_Char **atts) {
-
 	int i;
 	user_data *ud;
 	ud = (user_data*)userData;
@@ -639,9 +649,14 @@ static void buffered_character_data_handler(void *userData,
 	if (ud->state == ERROR) return;
 
 	if (ud->obfuscated){
+        DEBUG("Going to de-obfuscate %s (len=%d)...", s,len);DEBUGHEX(s,len);
 		len = base64_decode(s, s, len);
+        DEBUG("after base64 len=%d   ",len);DEBUGHEX(s,len);
+        if (len < 0) {len = 0; printf("Warning: ignoring invalid base64-decoded password\n"); }
 		if (len < 0) goto bail;
-		cx9r_salsa20_decrypt(&ud->salsa20_ctx, s, s, len);
+        cx9r_salsa20_decrypt(&ud->salsa20_ctx, s, s, len);
+        s[len] = 0;
+        DEBUG("plain=%s\n\n", s);
 	}
 
 	if (ud->state == GROUP_NAME) {
@@ -680,7 +695,6 @@ bail:
 // callback handler for closing tags (e.g. </Root>)
 static void end_element_handler(void *userData,
 		const XML_Char *name) {
-
 	user_data *ud;
 	ud = (user_data*)userData;
 	if (ud->state == ERROR) return;
@@ -691,9 +705,9 @@ static void end_element_handler(void *userData,
 		buffered_character_data_handler(ud, ud->char_data_buf, ud->char_data_len);
 		free(ud->char_data_buf);
 		ud->char_data_buf = NULL;
-		// signal that we should not process character data
-		ud->char_data_len = -1;
 	}
+    // signal that we should not process character data
+    ud->char_data_len = -1;
 
 	if (ud->stack_top == NULL) goto bail;
 
@@ -767,7 +781,7 @@ bail:
 	XML_StopParser(ud->parser, XML_FALSE);
 }
 
-static cx9r_err parse_xml(cx9r_stream_t *stream, ckpr_ctx_impl *ctx) {
+static cx9r_key_tree* parse_xml(cx9r_stream_t *stream, ckpr_ctx_impl *ctx) {
 	cx9r_err err = CX9R_OK;
 	XML_Parser parser;
 	size_t n;
@@ -790,7 +804,9 @@ static cx9r_err parse_xml(cx9r_stream_t *stream, ckpr_ctx_impl *ctx) {
 
 	cx9r_sha256_hash_buffer(salsa20_key, ctx->protected_stream_key,
 			ctx->protected_stream_key_length);
-
+    
+    DEBUG("Salsa20 key:");DEBUGHEX(salsa20_key,CX9R_SHA256_HASH_LENGTH);
+    
 	ud.stack_top = parse_stack;
 	ud.parser = parser;
 	ud.state = UNKNOWN;
@@ -809,27 +825,32 @@ static cx9r_err parse_xml(cx9r_stream_t *stream, ckpr_ctx_impl *ctx) {
 
 	XML_SetCharacterDataHandler(parser, character_data_handler);
 
+int parse_err;
 	while (!cx9r_seof(stream)) {
 		n = cx9r_sread(buf, 1, 1028, stream);
-		CHECK((XML_Parse(parser, buf, n, 0) == XML_STATUS_OK), err,
-				CX9R_PARSE_ERR, dealloc_user_data);
+		CHECK(((parse_err=XML_Parse(parser, buf, n, 0)) == XML_STATUS_OK), err,
+				CX9R_PARSE_ERR, dealloc_key_tree);
 	}
-	CHECK((XML_Parse(parser, buf, 0, 1) == XML_STATUS_OK), err,
-			CX9R_PARSE_ERR, dealloc_user_data);
+	CHECK(((parse_err=XML_Parse(parser, buf, 0, 1)) == XML_STATUS_OK), err,
+			CX9R_PARSE_ERR, dealloc_key_tree);
 
-	CHECK((ud.state != ERROR), err, CX9R_PARSE_ERR, dealloc_user_data);
+    if (ISDEBUG&&err==CX9R_PARSE_ERR)printf("Parse Error: %d", parse_err);
+	CHECK((ud.state != ERROR), err, CX9R_PARSE_ERR, dealloc_key_tree);
 
-	cx9r_dump_tree(kt);
+    goto dealloc_user_data;
+    
+//	cx9r_dump_tree(kt);
 
+dealloc_key_tree:
+    
+	cx9r_key_tree_free(kt);
+    kt = NULL;
+    
 dealloc_user_data:
 
 	if (ud.char_data_buf != NULL) {
 		free (ud.char_data_buf);
 	}
-
-dealloc_key_tree:
-
-	cx9r_key_tree_free(kt);
 
 dealloc_stack:
 
@@ -841,7 +862,7 @@ dealloc_parser:
 
 bail:
 
-	return err;
+	return kt;
 }
 
 cx9r_err cx9r_init() {
@@ -852,7 +873,7 @@ cx9r_err cx9r_init() {
 	return CX9R_OK;
 }
 
-cx9r_err cx9r_kdbx_read(FILE *f, char *passphrase, int dump_xml) {
+cx9r_err cx9r_kdbx_read(FILE *f, char *passphrase, int flags, cx9r_key_tree **kt) {
 	cx9r_err err = CX9R_OK;
 	ckpr_ctx_impl *ctx;
 	cx9r_stream_t *stream;
@@ -869,21 +890,21 @@ cx9r_err cx9r_kdbx_read(FILE *f, char *passphrase, int dump_xml) {
 	CHEQ(((err = kdbx_read_magic(stream)) == CX9R_OK), cleanup_stream);
 
 	CHEQ(((err = kdbx_read_version(stream)) == CX9R_OK), cleanup_stream);
-printf("Reading...");
+DEBUG("Reading...");
 	CHECK(((ctx = ctx_alloc()) != NULL), err, CX9R_MEM_ALLOC_ERR,
 			cleanup_stream);
-printf("1 ");
+DEBUG("1 ");
 	CHEQ(((err = kdbx_read_header(stream, ctx)) == CX9R_OK), cleanup_ctx);
-printf("2 ");
+DEBUG("2 ");
 	CHEQ(((err = generate_key(ctx, passphrase)) == CX9R_OK), cleanup_ctx);
-printf("3 ");
+DEBUG("3 ");
 	CHECK(((decrypted_stream = cx9r_aes256_cbc_sopen(stream, ctx->key, ctx->iv)) != NULL),
 			err, CX9R_STREAM_OPEN_ERR, cleanup_ctx);
-printf("4 ");
+DEBUG("4 ");
 	stream = decrypted_stream;
 
 	CHEQ(((err = verify_start_bytes(stream, ctx)) == CX9R_OK), cleanup_ctx);
-printf("5 ");
+DEBUG("5 ");
 	CHECK(((hashed_stream = cx9r_hash_sopen(stream)) != NULL),
 				err, CX9R_STREAM_OPEN_ERR, cleanup_ctx);
 
@@ -894,10 +915,11 @@ printf("5 ");
 					err, CX9R_STREAM_OPEN_ERR, cleanup_ctx);
 		stream = gzip_stream;
 	}
-
+DEBUG("6\n");
+    DEBUG("inner_random_stream=%d\n", ctx->inner_random_stream_id);
 //	o = fopen("raw.xml", "w");
 //
-    if (dump_xml) {
+    if (flags & FLAG_DUMP_XML) {
         while (!cx9r_seof(stream)) {
             n = cx9r_sread(buf, 1, 1027, stream);
             fwrite(buf, 1, n, stdout);
@@ -906,7 +928,7 @@ printf("5 ");
         //
         //	fclose(o);
     } else {
-        CHEQ(((err = parse_xml(stream, ctx)) == CX9R_OK), cleanup_ctx);
+        CHECK(((*kt = parse_xml(stream, ctx)) != NULL), err, CX9R_PARSE_ERR, cleanup_ctx);
     }
 cleanup_ctx:
 	ctx_free(ctx);

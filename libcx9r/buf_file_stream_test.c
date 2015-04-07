@@ -17,7 +17,7 @@
  * along with cryptkeyper. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stream.h>
+#include "stream.h"
 #include <stdio.h>
 #include <stdint.h>
 

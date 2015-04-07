@@ -21,7 +21,7 @@
 // with heavy modifications for optimization, C99-compliant portability,
 // possibility to reuse a context for several calls to encryption
 // functions, etc.
-
+#include <stdio.h>
 #include "salsa20.h"
 
 #if ((BYTEORDER != 1234) && (BYTEORDER != 4321))

@@ -20,6 +20,7 @@
 #define CX9R_H
 
 #include <stdio.h>
+#include "key_tree.h"
 
 enum cx9r_err_enum {
 	CX9R_OK,
@@ -46,13 +47,19 @@ enum cx9r_err_enum {
 	CX9R_PARSE_ERR				// parsing error 18
 };
 
-#define FLAG_DUMP_XML 2
 
+#define DEBUG(str...) if(g_enable_verbose)fprintf(stderr, str)
+#define ISDEBUG g_enable_verbose
+#define DEBUGHEX(bytes,len) if(g_enable_verbose){ int kk; for(kk=0;kk<len;kk++){printf("%02X ",((uint8_t*)bytes)[kk]);}printf("\n"); }
+extern int g_enable_verbose;
+
+#define FLAG_DUMP_XML 2
+#define FLAG_VERBOSE 4
 
 typedef enum cx9r_err_enum cx9r_err;	// return code
 typedef void * cx9r_ctx;		// context
 
 cx9r_err cx9r_init();
-cx9r_err cx9r_kdbx_read(FILE *f, char *passphrase, int flags);
+cx9r_err cx9r_kdbx_read(FILE *f, char *passphrase, int flags, cx9r_key_tree** kt);
 
 #endif
