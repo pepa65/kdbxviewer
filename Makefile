@@ -11,5 +11,5 @@ DEFINES = -DHAVE_STDINT_H -DGCRYPT_WITH_SHA256 -DGCRYPT_WITH_AES -DBYTEORDER=123
 kdbxviewer: $(LIBKX9R_CODE) src/main.c src/tui.c src/mainWindow.stfl src/helper.c
 	mkdir -p bin
 	cp src/mainWindow.stfl bin/mainWindow.stfl
-	gcc -g -o bin/kdbxviewer -I./include/ -I./libcx9r/ src/main.c src/helper.c $(DEFINES) $(LIBKX9R_CODE) -lgcrypt -lexpat -lz -lstfl src/tui.c -lncurses -lmenu -Wno-pointer-sign
+	gcc -g -o bin/kdbxviewer -I./include/ -I./libcx9r/ src/main.c src/helper.c $(DEFINES) $(LIBKX9R_CODE) src/tui.c -lgcrypt -lexpat -lz -lstfl -lncursesw -lmenu -Wno-pointer-sign
 

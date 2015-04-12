@@ -121,7 +121,7 @@ void showdetails(cx9r_kt_entry *item) {
     stfl_free(detform);
 }
 
-void openfolder() {
+ void openfolder() {
     int idx = wcstol(stfl_get(form, L"listidx"), NULL, 10);
     cx9r_kt_group *child = getchild(curGroup, idx);
     if (child != NULL) {
@@ -174,8 +174,8 @@ void close_search() {
 
 void updatelist() {
     ktgroup_to_list(form, curGroup);
-    char buf[80]; char* pos = &buf; strcpy(pos," /"); pos+=2;
-    for(int i=0; i<level; i++) pos += snprintf(pos, 80-(pos-buf), "%s/", trail[i]);
+    char buf[80]; char* pos = &buf; strcpy(pos," /"); pos+=2; int i;
+    for(i=0; i<level; i++) pos += snprintf(pos, 80-(pos-buf), "%s/", trail[i]);
 	stfl_set(form, L"pathtxt", WIDE(buf));
 }
 
