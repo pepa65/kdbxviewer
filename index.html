@@ -10,8 +10,40 @@
   <li>Get tab-separated (TSV/CSV) password list</li>
 </ul>
 
+<h3>Screenshot of the ncurses GUI</h3>
 <img src="https://public.luelistan.net/screenshots/Bildschirmfoto%202015-04-12%20um%2002.34.40.png" alt="Screenshot">
 
+<h3>Installation</h3>
+
+<ul>
+<li><a href="https://github.com/max-weller/kdbx-viewer">Code repository at github</a></li>
+  
+</ul>
+
+<ol>
+  <li>To install, either clone the git repository or download the <a href="">most recent ZIP snapshot</a>. </li>
+  <li>Get the required libraries via your OS's package manager: <code>ncurses, gcrypt, zlib, expat, libstfl. </code></li>
+  <li>Run <code>make</code>. After that, <code>./kdbxviewer -h</code> gives the usage notes:</li>
+</ol>
+<h3>Usage</h3>
+$ ./kdbxviewer -h
+KDBX Viewer 0.0.1
+dumps KeePass2 Database files in various formats
+
+  ./kdbxviewer [-v] [-x|-t|-b|-i] [-p PASSPHRASE] [-s|-S SEARCH] FILENAME
+ Commands:
+   -x       XML dump
+   -t       Tree
+   -c       CSV format
+   -i       interactive
+
+ Options:
+   -p PASSPHRASE
+            decrypt file using PASSPHRASE
+            WARNING: never use this on shared computers as the
+            passphrase will be visible in the process list.
+   -s STR   show entries with title containing STR
+   -S STR   show entries containing STR in any field value
 <p>Note - This tool is called kdbx-<i>viewer</i> for a reason... it works completely read-only at 
 the moment, although write support might be added later on.</p>
 
