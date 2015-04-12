@@ -1,162 +1,237 @@
 
-#include <menu.h>	/* Gives you menuing capabilities */
-#include <stdlib.h>	/* Needed for calloc() */
-#include <string.h>	/* Needed for strlen() and friends */
 
-#include "tui.h"
+#include "stfl.h"
 
-#define WHITEONRED 1
-#define WHITEONBLUE 2
-#define WHITEONBLACK 3
-#define BLACKONWHITE 4
-#define REDONWHITE 5
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#include <cx9r.h>
+#include <key_tree.h>
+
+#include <langinfo.h>
+#include <locale.h>
+#include "helper.h"
+
+#define WIDE(str) stfl_ipool_towc(ipool, str)
+
+#include "mainWindow.stfl"
 
 
-void wCenterTitle(WINDOW *pwin, const char * title)
-	{
-	int x, maxy, maxx, stringsize;
-	getmaxyx(pwin, maxy, maxx);
-	stringsize = 4 + strlen(title);
-	x = (maxx - stringsize)/2;
-	mvwaddch(pwin, 0, x, ACS_RTEE);
-	waddch(pwin, ' ');
-	waddstr(pwin, title);
-	waddch(pwin, ' ');
-	waddch(pwin, ACS_LTEE);
+struct stfl_ipool *ipool;
+struct stfl_form *form;
+cx9r_kt_group *curGroup;
+int foldercount;
+
+const char* trail [10];
+int level_pos[10];
+int level = 0;
+
+void updatelist();
+
+void addlistitem(struct stfl_form *f, wchar_t* id, const char* text) {
+    char* nl = strstr(text, "\n");
+    if (nl) *nl = 0;
+    
+    wchar_t buf[256];
+    const wchar_t* quoted = stfl_quote( stfl_ipool_towc(ipool,text));
+    //    printf("adding: %ls\n",quoted);
+    swprintf((wchar_t*)&buf, 255, L"{listitem text:%ls}", quoted);
+    //printf("adding: %ls\n",buf);
+    stfl_modify(f, id, L"append", buf);
+    
+    if (nl) addlistitem(f, id, nl+1);
+}
+
+void ktgroup_to_list(struct stfl_form *f, cx9r_kt_group *g) {
+    stfl_modify(f, L"result", L"replace_inner", L"{list}");
+    cx9r_kt_group *c = cx9r_kt_group_get_children(g);
+    foldercount = 0;
+    char buf[256];
+    while(c != NULL) {
+        //printf("ktgroup_to_list %s\n",cx9r_kt_group_get_name(c));
+        snprintf(&buf, 255, "+ % -30s ", cx9r_kt_group_get_name(c));
+        addlistitem(f, L"result", &buf);
+        foldercount++;
+        
+        c =  cx9r_kt_group_get_next(c);
+    }
+    cx9r_kt_entry *e = cx9r_kt_group_get_entries(g);
+    while (e != NULL) {
+        //printf("entry %s\n",cx9r_kt_entry_get_name(e));
+
+        snprintf(&buf, 255, "  % -30s % -30s %s", cx9r_kt_group_get_name(e), getfield(e, "UserName"), getfield(e, "URL"));
+        addlistitem(f, L"result", &buf);
+        
+        e = cx9r_kt_entry_get_next(e);
+    }
+}
+
+cx9r_kt_entry *getitem(cx9r_kt_group *g, int i) {
+    i -= foldercount;
+    if (i < 0) return NULL;
+    cx9r_kt_entry *e = cx9r_kt_group_get_entries(g);
+    while(e!=NULL && i-->0) {
+        e = cx9r_kt_entry_get_next(e);
+    }
+    return e;
+}
+cx9r_kt_group *getchild(cx9r_kt_group *g, int i) {
+    if (i < 0) return NULL;
+    cx9r_kt_group *c = cx9r_kt_group_get_children(g);
+    while(c!=NULL && i-->0) {
+        c = cx9r_kt_group_get_next(c);
+    }
+    return c;
+}
+
+void updatecuritem() {
+    int idx = wcstol(stfl_get(form, L"listidx"), NULL, 10);
+    cx9r_kt_entry *item = getitem(curGroup, idx);
+    cx9r_kt_group *child = getchild(curGroup, idx);
+    if (item != NULL) {
+        stfl_set(form, L"txt_title_val", WIDE(cx9r_kt_entry_get_name(item)));
+        stfl_set(form, L"txt_username_val", WIDE(getfield(item, "UserName")));
+        stfl_set(form, L"txt_password_val", WIDE(getfield(item, "Password")));
+        stfl_set(form, L"txt_url_val", WIDE(getfield(item, "URL")));
+    } else if (child != NULL) {
+        stfl_set(form, L"txt_title_val", WIDE(cx9r_kt_group_get_name(child)));
+        stfl_set(form, L"txt_username_val", L"(n/a)");
+        stfl_set(form, L"txt_password_val", L"(n/a)");
+        stfl_set(form, L"txt_url_val", L"(n/a)");
+    }
+}
+
+void showdetails(cx9r_kt_entry *item) {
+    struct stfl_form *detform = stfl_create(stfl_code_detailWindow);
+    char content[250];
+    //stfl_set(detform, L"content", WIDE(content));
+    cx9r_kt_field *f = cx9r_kt_entry_get_fields(item);
+    while(f != NULL) {
+        snprintf(&content, 250, "<BOLD>%s : </>%s", f->name, f->value);
+        addlistitem(detform, L"textviewer", &content);
+        f = cx9r_kt_field_get_next(f);
+    }
+    
+	const wchar_t *event = 0;
+	while (1) {
+		event = stfl_run(detform, 0);
+        if (event != NULL) break;
+    }
+    stfl_free(detform);
+}
+
+void openfolder() {
+    int idx = wcstol(stfl_get(form, L"listidx"), NULL, 10);
+    cx9r_kt_group *child = getchild(curGroup, idx);
+    if (child != NULL) {
+        level_pos[level] = idx;
+        trail[level] = cx9r_kt_group_get_name(child);
+        level++;
+        curGroup = child;
+        stfl_set(form, L"listidx", L"0");
+        updatelist();
+    } else {
+        cx9r_kt_entry *item = getitem(curGroup, idx);
+        if (item != NULL) {
+            showdetails(item);
+        }
+    }
+}
+void parentfolder() {
+	if (cx9r_kt_group_get_parent(curGroup) != NULL) {
+	    curGroup = cx9r_kt_group_get_parent(curGroup);
+        level--;
+        updatelist();
+        wchar_t buf[6];
+        swprintf(&buf,5,L"%d", level_pos[level]);
+        stfl_set(form, L"listidx", &buf);
 	}
+}
 
-void wclrscr(WINDOW * pwin)
-	{
-	int y, x, maxy, maxx;
-	getmaxyx(pwin, maxy, maxx);
-	for(y=0; y < maxy; y++)
-		for(x=0; x < maxx; x++)
-			mvwaddch(pwin, y, x, ' ');
-	}
+void updatestatus(const wchar_t* focus) {
+    if (!wcscmp(focus, L"result")) {
+        stfl_set(form, L"stat_txt", L"   LEFT  parent     RIGHT  open folder     ^F  search    ^W  quit");
+    } else {
+        stfl_set(form, L"stat_txt", L"   ESC  back to list");
+        
+    }
+}
 
-bool initColors()
-	{
-	if(has_colors())
-		{
-		start_color();
-		init_pair(WHITEONRED, COLOR_WHITE, COLOR_RED);
-		init_pair(WHITEONBLUE, COLOR_WHITE, COLOR_BLUE);
-		init_pair(REDONWHITE, COLOR_RED, COLOR_WHITE);
-		return(true);
+void show_search() {
+    stfl_set(form, L"searchbar_display", L"1");
+    stfl_set(form, L"search_display", L"1");
+    stfl_set(form, L"statbar_display", L"0");
+    stfl_set_focus(form, L"txt_search");
+}
+
+void close_search() {
+    stfl_set(form, L"searchbar_display", L"0");
+    stfl_set(form, L"search_display", L"0");
+    stfl_set(form, L"statbar_display", L"1");
+    stfl_set_focus(form, L"result");
+}
+
+void updatelist() {
+    ktgroup_to_list(form, curGroup);
+    char buf[80]; char* pos = &buf; strcpy(pos," /"); pos+=2;
+    for(int i=0; i<level; i++) pos += snprintf(pos, 80-(pos-buf), "%s/", trail[i]);
+	stfl_set(form, L"pathtxt", WIDE(buf));
+}
+
+int run_interactive_mode(char* filename, cx9r_key_tree *kt)
+{
+	if (!setlocale(LC_ALL,""))
+		fprintf(stderr, "WARING: Can't set locale!\n");
+
+	ipool = stfl_ipool_create(nl_langinfo(CODESET));
+	form = stfl_create(stfl_code_mainWindow);
+    
+    curGroup = cx9r_key_tree_get_root(kt);
+    //trail[level] = "";
+    //level++;
+    updatelist();
+
+    updatestatus(L"result");
+    updatecuritem();
+    
+    char buf[60];
+    snprintf((char*)&buf, 59, "kdbx-viewer: %s", filename);
+	stfl_set(form, L"filetxt", stfl_ipool_towc(ipool, buf));
+	stfl_ipool_flush(ipool);
+
+	const wchar_t *event = 0;
+	while (1) {
+		event = stfl_run(form, 0);
+            wchar_t dbg[100];
+                const wchar_t* focus = stfl_get_focus(form);
+            swprintf((wchar_t*)&dbg,59,L"%ls %ls", event,focus);
+            stfl_set(form, L"debug",dbg);
+		if (event) {
+			if (!wcscmp(event, L"F4") || !wcscmp(event, L"^W") || !wcscmp(event, L"q"))
+				break;
+			else if (!wcscmp(event, L"^S") || !wcscmp(event, L"^F"))
+				show_search();
+			else if (!wcscmp(event, L"close_search"))
+				close_search();
+			else if (!wcscmp(event, L"ESC") || !wcscmp(event, L"^G"))
+				stfl_set_focus(form, L"result");
+			else if (!wcscmp(event, L"openfolder"))
+				openfolder();
+			else if (!wcscmp(event, L"parentfolder"))
+				parentfolder();
 		}
-	else
-		return(false);
+        updatestatus(focus);
+        if (!wcscmp(focus, L"result")) updatecuritem();
 	}
 
-
-int runMenu(
-		WINDOW *wParent,
-		int height,
-		int width,
-		int y,
-		int x,
-		char *choices[]
-		)
-	{
-	int c;			/* key pressed */	
-	ITEM **my_items;	/* list of items on this menu */
-	MENU *my_menu;		/* the menu structure */
-
-	WINDOW *wUI;		/* window on which the user
-					interacts with the menu */
-	WINDOW *wBorder;	/* window containing the wUI window
-					and the border and title */
-
-        int n_choices;		/* number of items on menu */
-        int ssChoice;		/* subscript to run around the choices array */
-	int my_choice = -1;	/* the zero based numeric user choice */
-
-	/* CALCULATE NUMBER OF MENU CHOICES */
-	for(n_choices=0; choices[n_choices]; n_choices++);
-
-	/* ALLOCATE ITEM ARRAY AND INDIVIDUAL ITEMS */
-        my_items = (ITEM **)calloc(n_choices + 1, sizeof(ITEM *));
-        for(ssChoice = 0; ssChoice < n_choices; ++ssChoice)
-                my_items[ssChoice] = new_item(choices[ssChoice], NULL);
-	my_items[n_choices] = (ITEM *)NULL;
-
-	/* CREATE THE MENU STRUCTURE */
-	my_menu = new_menu((ITEM **)my_items);
-
-	/* PUT > TO THE LEFT OF HIGHLIGHTED ITEM */
-	set_menu_mark(my_menu, "> ");
-
-	/* SET UP WINDOW FOR MENU'S BORDER */
-	wBorder = newwin(height, width, y, x);
-	wattrset(wBorder, COLOR_PAIR(WHITEONRED) | WA_BOLD);
-	wclrscr(wBorder); 
-	box(wBorder, 0, 0);
-	wCenterTitle(wBorder, "Choose one");
-
-	/* SET UP WINDOW FOR THE MENU'S USER INTERFACE */
-	wUI = derwin(wBorder, height-2, width-2, 2, 2);
-
-	/* ASSOCIATE THESE WINDOWS WITH THE MENU */
-	set_menu_win(my_menu, wBorder);
-	set_menu_sub(my_menu, wUI);
-	set_menu_format(my_menu, 12, 1);
-
-	/* MATCH MENU'S COLORS TO THAT OF ITS WINDOWS */
-	set_menu_fore(my_menu, COLOR_PAIR(REDONWHITE));
-	set_menu_back(my_menu, COLOR_PAIR(WHITEONRED) | WA_BOLD);
-
-	/* SET UP AN ENVIRONMENT CONDUCIVE TO MENUING */
-	keypad(wUI, TRUE);	/* enable detection of function keys */
-	noecho();		/* user keystrokes don't echo */
-	curs_set(0);		/* make cursor invisible */
-
-	/* DISPLAY THE MENU */
-	post_menu(my_menu);
-
-	/* REFRESH THE BORDER WINDOW PRIOR TO ACCEPTING USER INTERACTION */
-	touchwin(wBorder);
-	wrefresh(wBorder);  
-
-	/* HANDLE USER KEYSTROKES */
-	while(my_choice == -1)
-		{
-		touchwin(wUI);	/* refresh prior to getch() */
-		wrefresh(wUI); 	/* refresh prior to getch() */
-		c = getch();
-		switch(c)
-			{
-			case KEY_DOWN:
-				menu_driver(my_menu, REQ_DOWN_ITEM);
-				break;
-			case KEY_UP:
-				menu_driver(my_menu, REQ_UP_ITEM);
-				break;
-			case 10:	/* Enter */
-				my_choice = item_index(current_item(my_menu));
-
-				/* RESET CURSOR IN CASE MORE SELECTION IS NECESSARY */
-				pos_menu_cursor(my_menu);
-				break;
-			}
-		}	
-
-	/* FREE ALL ALLOCATED MENU AND ITEM RESOURCES */
-	unpost_menu(my_menu);
-        for(ssChoice = 0; ssChoice < n_choices; ++ssChoice)
-                free_item(my_items[ssChoice]);
-	free_menu(my_menu);
-
-	/* DESTROY MENU WINDOW AND BORDER WINDOWS */
-	delwin(wUI);
-	delwin(wBorder);
-
-	/* UNDO MENU SPECIFIC ENVIRONMENT */
-	curs_set(1);			/* make cursor visible again */
+	stfl_reset();
 	
-	/* REPAINT THE CALLING SCREEN IN PREPARATION FOR RETURN */
-	touchwin(wParent);
-	wrefresh(wParent);
+	stfl_free(form);
+	stfl_ipool_destroy(ipool);
 
-	/* RETURN THE ZERO BASED NUMERIC USER CHOICE */
-	return(my_choice);
-	}
+	return 0;
+}
+
+
+

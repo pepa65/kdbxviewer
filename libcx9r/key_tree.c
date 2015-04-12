@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdio.h>
 
+/*
 struct cx9r_ktf {
 	char *name;
 	char *value;
@@ -45,7 +46,7 @@ struct cx9r_ktg {
 struct cx9r_kt {
 	cx9r_kt_group root;
 };
-
+*/
 cx9r_key_tree *cx9r_key_tree_create() {
 	cx9r_key_tree *kt;
 
@@ -195,7 +196,7 @@ char const *cx9r_kt_entry_get_name(cx9r_kt_entry *kte) {
 	return kte->name;
 }
 
-char const *cx9r_kt_entry_set_name(cx9r_kt_entry *kte, char const *name, size_t length) {
+char const *cx9r_kt_entry_set_name(cx9r_kt_entry *kte, char const *name, int length) {
 	if (length < 0) {
 		length = strlen(name);
 	}
