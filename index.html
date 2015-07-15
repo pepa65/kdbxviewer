@@ -16,16 +16,21 @@
 
 <h3>Installation</h3>
 
+<b>Arch Linux package</b><br />
+<p>Please note: Starting from June 8th 2015, the Arch User Repository is being migrated to a Git-based platform. Due to that, kdbx-viewer must be obtained from <a href="https://aur4.archlinux.org">https://aur4.archlinux.org</a> at the moment. This will end at August 8th 2015 when the migration is complete. More information can be found <a href="https://wiki.archlinux.org/index.php/Arch_User_Repository#AUR_4">in the Arch wiki</a>.</p>
+<p>There is an Arch Linux AUR package: <b><code><a href="https://aur4.archlinux.org/packages/kdbx-viewer/">kdbx-viewer</a></code></b>. You can install it by either</p>
 <ul>
-<li><a href="https://github.com/max-weller/kdbx-viewer">Code repository at github</a></li>
-  
+  <li>using an AUR package manager, e.g. Yaourt: <code>yaourt -S kdbx-viewer --aur-url https://aur4.archlinux.org</code></li>
+  <li>building the package, following the instructions on <a href="https://wiki.archlinux.org/index.php/Arch_User_Repository#Installing_packages">installing AUR packages</a> in the Arch wiki.
 </ul>
 
+<b>Build from source</b><br />
 <ol>
-  <li>To install, either clone the git repository or download the <a href="">most recent ZIP snapshot</a>. </li>
+  <li>To install, either clone the <a href="https://github.com/max-weller/kdbx-viewer">git repository</a> or download the <a href="">most recent ZIP snapshot</a>. </li>
   <li>Get the required libraries via your OS's package manager: <code>ncurses, gcrypt, zlib, expat, libstfl. </code></li>
   <li>Run <code>make</code>. After that, <code>./kdbxviewer -h</code> gives the usage notes:</li>
 </ol>
+
 <h3>Usage</h3>
 <pre>
 $ ./kdbxviewer -h
@@ -57,5 +62,3 @@ the moment, although write support might be added later on.</p>
 <li><a href="kdbx_format.html">Format specification</a> of .kdbx files (by jhagmar)</li>
 <li><a href="License.txt">License</a></li>
 </ul>
-
-
