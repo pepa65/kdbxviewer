@@ -11,3 +11,4 @@ libtool
 src/keypr
 stamp-h1
 *.kdbx
+bin/
