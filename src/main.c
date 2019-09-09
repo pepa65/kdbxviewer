@@ -10,7 +10,7 @@
 #include "tui.h"
 #include "helper.h"
 
-void print_help(char* commandname);
+void print_help(char* commandpath);
 const char* getfield(cx9r_kt_entry* e, char* name);
 void print_key_table(cx9r_kt_group *g, int level);
 static void dump_tree_group(cx9r_kt_group *g, int depth);
@@ -21,12 +21,11 @@ char* filter_str = NULL;
 int filter_mode = 0;
 
 int show_passwords = 0;
-#define HIDEPW (show_passwords ? "" : "\033[33;43m")
-#define ENDHIDEPW "\033[39;49m"
+#define HIDEPW (show_passwords ? "" : "\033[47;37m")
+#define GROUP "\033[1m\033[31m"
 #define TITLE "\033[1m\033[33m"
-#define ROOT "\033[1m\033[32m"
 #define FIELD "\033[36m"
-#define X "\033[0m"
+#define RESET "\033[0m"
 
 int check_filter(cx9r_kt_entry* e, cx9r_kt_group* G) {
 	if (filter_str == NULL) return 1;
@@ -52,11 +51,12 @@ int main(int argc, char** argv) {
 	int c, flags = 0;
 	char* pass = NULL;
 	char mode = 0;
-	while ((c = getopt(argc, argv, "ictp:fs:S:v?h")) != -1) {
+	while ((c = getopt(argc, argv, "xictp:us:S:v?h")) != -1) {
 		switch (c) {
 		case 'v':
 			g_enable_verbose=1;
 			break;
+		case 'x': flags = 2;
 		case 'c':
 		case 't':
 		case 'i':
@@ -67,7 +67,7 @@ int main(int argc, char** argv) {
 		case 'h':
 			print_help(argv[0]);
 			return 0;
-		case 'f':
+		case 'u':
 			show_passwords = 1;
 			break;
 		case 'p':
@@ -102,7 +102,7 @@ int main(int argc, char** argv) {
 	//scanf("%s", &pass);
 	//printf("pwd: >%s<\n", pass);
 	if (pass == NULL) {
-		printf("%sPassword: %s", FIELD, X);
+		printf("%sPassword: %s", FIELD, RESET);
 		pass = getpass("");
 	}
 	cx9r_key_tree *kt = NULL;
@@ -111,28 +111,48 @@ int main(int argc, char** argv) {
 	if (res == 0 && mode=='c') print_key_table(cx9r_key_tree_get_root(kt), 0);
 	if (res == 0 && mode=='i') run_interactive_mode(argv[optind], kt);
 	if (kt != NULL) cx9r_key_tree_free(kt);
+	if (res == 3) puts("Wrong password");
 	//printf("\nResult: %d\n", res);
 	return res;
 }
 
+// Print CSV
+//char* dq(char *string) {
 
-const char* trail[10];
+// "Group","Title","Username","Password","URL","Notes"
+void print_key_table(cx9r_kt_group *g, int level) {
+	cx9r_kt_entry *e = cx9r_kt_group_get_entries(g);
+	while (e != NULL) {
+		if (check_filter(e, g))
+			printf("\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n",
+					cx9r_kt_group_get_name(g), cx9r_kt_entry_get_name(e),
+					getfield(e, "UserName"), getfield(e, "Password"),
+					getfield(e, "URL"), getfield(e, "Notes"));
+		e = cx9r_kt_entry_get_next(e);
+	}
+	cx9r_kt_group *c = cx9r_kt_group_get_children(g);
+	while(c != NULL) {
+		print_key_table(c, level + 1);
+		c = cx9r_kt_group_get_next(c);
+	}
+}
+
 // Table Printing
+const char* trail[10];
 static int print_trail(int n) {
 	int i = 0, l = 0;
 	while(i<=n) l += printf("%s/", trail[i++]);
 	return l;
 }
-
-void print_key_table(cx9r_kt_group *g, int level) {
+void print_key_table_X(cx9r_kt_group *g, int level) {
 	trail[level] = cx9r_kt_group_get_name(g);
 	cx9r_kt_entry *e = cx9r_kt_group_get_entries(g);
 	while (e != NULL) {
 		if (check_filter(e, g)) {
 			int l = print_trail(level);
 			l += printf("%s", cx9r_kt_entry_get_name(e));
-			while(l++<50) putchar(' ');
-			printf("\t%s%s%s\n", HIDEPW, getfield(e, "Password"), ENDHIDEPW);
+			while(l++<50) putchar('^');
+			printf("\t%s%s%s\n", HIDEPW, getfield(e, "Password"), RESET);
 		}
 		e = cx9r_kt_entry_get_next(e);
 	}
@@ -145,20 +165,20 @@ void print_key_table(cx9r_kt_group *g, int level) {
 
 // Tree Printing
 static void indent(int n) {
-	while(n-- > 0) printf("%s|%s ", ROOT, X);
+	while(n-- > 0) printf("%s|%s ", GROUP, RESET);
 }
 static void dump_tree_field(cx9r_kt_field *f, int depth) {
 	if (f->value != NULL) {
 		if (strcmp(f->name, "Notes") == 0) indent(depth-1);
 		else {
 			indent(depth-1);
-			printf("%s%s: \"%s", FIELD, f->name, X);
+			printf("%s%s: \"%s", FIELD, f->name, RESET);
 		}
 		if (strcmp(f->name, "Password") == 0)
-			printf("%s%s%s", HIDEPW, f->value, ENDHIDEPW);
+			printf("%s%s%s", HIDEPW, f->value, RESET);
 		else printf("%s", f->value);
 		if (strcmp(f->name, "Notes") == 0) puts("");
-		else printf("%s\"%s\n", FIELD, X);
+		else printf("%s\"%s\n", FIELD, RESET);
 	}
 	if (f->next != NULL) dump_tree_field(f->next, depth);
 }
@@ -166,7 +186,7 @@ static void dump_tree_field(cx9r_kt_field *f, int depth) {
 static void dump_tree_entry(cx9r_kt_group *g, cx9r_kt_entry *e, int depth) {
 	if (check_filter(e, g)) {
 		indent(depth-1);
-		if (e->name != NULL) printf("%s%s%s\n", TITLE, e->name, X);
+		if (e->name != NULL) printf("%s%s%s\n", TITLE, e->name, RESET);
 		if (e->fields != NULL) dump_tree_field(e->fields, depth);
 		else puts("");
 	}
@@ -175,7 +195,7 @@ static void dump_tree_entry(cx9r_kt_group *g, cx9r_kt_entry *e, int depth) {
 
 static void dump_tree_group(cx9r_kt_group *g, int depth) {
 	indent(depth);
-	if (g->name != NULL) printf("%s%s%s", ROOT, g->name, X);
+	if (g->name != NULL) printf("%s%s%s", GROUP, g->name, RESET);
 	puts("");
 	if (g->entries != NULL) dump_tree_entry(g, g->entries, depth + 1);
 	if (g->next != NULL) dump_tree_group(g->next, depth);
@@ -184,23 +204,23 @@ static void dump_tree_group(cx9r_kt_group *g, int depth) {
 
 // Help
 
-void print_help(char* arg0) {
-	char* arg = arg0 + strlen(arg0);
-	while (arg>=arg0 && *arg != '/') --arg;
-	++arg;
+void print_help(char* commandpath) {
+	char* command = commandpath + strlen(commandpath);
+	while (command >= commandpath && *command != '/') --command;
+	++command;
 	puts("KDBX Viewer 0.0.2 - Dump KeePass2 .kdbx databases in various formats");
 	puts("Usage:");
-	printf("  %s [-v] [-t|-b|-i] [-p PASSWORD] [-s|-S SEARCH] [-f] KDBX\n", arg);
+	printf("  %s [-v] [-t|-x|-c|-i] [-p PW] [-u] [-s|-S STR] KDBX\n", command);
 	puts("Commands:");
-	puts("  -t             Dump the KDBX database as a Tree");
-	puts("  -c             Dump the KDBX database in CSV format");
-	puts("  -i             Interactive querying of the KDBX database");
+	puts("  -t        Dump the KDBX database as a Tree");
+	puts("  -x        Dump the KDBX database in XML format");
+	puts("  -c        Dump the KDBX database in CSV format");
+	puts("  -i        Interactive querying of the KDBX database");
 	puts("Options:");
-	puts("  -p PASSWORD    Decrypt file KDBX using PASSWORD");
-	puts("                 WARNING: Never use this on shared computers as the");
-	puts("                 password will be visible in the process list!");
-	puts("  -s STR         Show database entries with STR in the Title");
-	puts("  -S STR         Show database entries with STR in any field");
-	puts("  -f             Display Password fields unmasked");
-	puts("  -h | -?        Display this Help text");
+	puts("  -p PW     Decrypt file KDBX using PW  (Never use on shared");
+	puts("            computers as PW can be seen in the process list!)");
+	puts("  -s STR    Show database entries with STR in the Title");
+	puts("  -S STR    Show database entries with STR in any field");
+	puts("  -u        Display Password fields Unmasked");
+	puts("  -h/-?     Display this Help text");
 }

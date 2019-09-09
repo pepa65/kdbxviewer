@@ -9,7 +9,7 @@
 
 #include "helper.h"
 
-const char* empty = "-";
+const char* empty = "";
 
 const char* getfield(cx9r_kt_entry* e, char* name) {
 	cx9r_kt_field *f = cx9r_kt_entry_get_fields(e);
