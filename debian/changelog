@@ -4,8 +4,10 @@ kdbxviewer (0.0.1-1) UNRELEASED; urgency=medium
 
  -- Max Weller <git@max-weller.de>  Fri, 21 Jul 2017 19:56:52 +0200
 
-kdbxviewer (0.0.1-2) UNRELEASED; urgency=medium
+kdbxviewer (0.0.2-1) UNRELEASED; urgency=medium
 
-  * Cleanups: remove non-functional -x command
+  * Working XML export
+  * Proper CSV export
+  * Cleanups: documentation
 
- -- pepa65 <pepa65@passchier.net>  Sun, 8 Sep 2019 00:37:03 +0700
+ -- pepa65 <pepa65@passchier.net>  Thu, 12 Sep 2019 10:37:03 +0700

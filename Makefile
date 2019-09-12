@@ -9,4 +9,4 @@ kdbxviewer: $(LIBKX9R_CODE) src/main.c src/tui.c src/mainWindow.stfl src/helper.
 
 install:
 	mkdir -p $(DESTDIR)/usr/bin
-	cp bin/kdbxviewer $(DESTDIR)/usr/bin
+	cp bin/kdbxviewer $(DESTDIR)/usr/local/bin
