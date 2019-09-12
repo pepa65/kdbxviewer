@@ -1,4 +1,5 @@
 // main.c
+# define VERSION "0.0.3"
 
 #include <stdio.h> // for puts/(f)printf
 #include <stdlib.h> // for exit
@@ -10,22 +11,41 @@
 #include "tui.h"
 #include "helper.h"
 
-void print_help(char* commandpath);
-const char* getfield(cx9r_kt_entry* e, char* name);
-void print_key_table(cx9r_kt_group *g, int level);
-static void dump_tree_group(cx9r_kt_group *g, int depth);
-
 #define diep(code, msg...) do{fprintf(stderr, msg); exit(code);}while(0)
 
 char* filter_str = NULL;
-int filter_mode = 0;
-
+int filter_mode = 1;
 int show_passwords = 0;
-#define HIDEPW (show_passwords ? "" : "\033[47;37m")
+
+#define HIDEPW show_passwords ? "" : "\033[47;37m"
 #define GROUP "\033[1m\033[31m"
 #define TITLE "\033[1m\033[33m"
 #define FIELD "\033[36m"
 #define RESET "\033[0m"
+
+// Display Help
+void print_help(char* command) {
+	printf("%s %s - Dump KeePass2 .kdbx databases in various formats\n",
+			command, VERSION);
+	puts("Usage:");
+	printf("  %s [-i|-t|-x|-c] [-p PW] [-u] [-s|-S STR] [-v|-V|-h] KDBX\n",
+			command);
+	puts("Commands:");
+	puts("  -i        Interactive viewing (default if no -s/-S is used)");
+	puts("  -t        Output as Tree (default if -s/-S is used)");
+	puts("  -x        Output as XML");
+	puts("  -c        Output as CSV");
+	puts("Options:");
+	puts("  -p PW     Decrypt file KDBX using PW  (Never use on shared");
+	puts("            computers as PW can be seen in the process list!)");
+	puts("  -s STR    Select only entries with STR in the Title");
+	puts("  -S STR    Select only entries with STR in any field");
+	puts("  -u        Display Password fields Unmasked");
+	puts("  -V        Display Version");
+	puts("  -v        More Verbose/debug output");
+	puts("  -h        Display this Help text");
+	puts("Website:    https://gitlab.com/pepa65/kdbxviewer");
+}
 
 int check_filter(cx9r_kt_entry* e, cx9r_kt_group* G) {
 	if (filter_str == NULL) return 1;
@@ -47,130 +67,7 @@ int check_filter(cx9r_kt_entry* e, cx9r_kt_group* G) {
 	return 0;
 }
 
-int main(int argc, char** argv) {
-	int c, flags = 0;
-	char* pass = NULL;
-	char mode = 0;
-	while ((c = getopt(argc, argv, "xictp:us:S:v?h")) != -1) {
-		switch (c) {
-		case 'v':
-			g_enable_verbose=1;
-			break;
-		case 'x': flags = 2;
-		case 'c':
-		case 't':
-		case 'i':
-			if (mode != 0) diep(-1, "Multiple modes not allowed\n");
-			mode = c;
-			break;
-		case '?':
-		case 'h':
-			print_help(argv[0]);
-			return 0;
-		case 'u':
-			show_passwords = 1;
-			break;
-		case 'p':
-			pass = optarg;
-			break;
-		case 's':
-			filter_str = optarg;
-			break;
-		case 'S':
-			filter_str = optarg;
-			filter_mode = 1;
-			break;
-		}
-	}
-	if (optind >= argc) diep(-2, "Missing FILENAME argument\n");
-	FILE* file = fopen(argv[optind], "r");
-	if (file == NULL) {
-		fprintf(stderr, "Error opening %s\n", argv[optind]);
-		perror("fopen");
-		return -3;
-	}
-	//int chr, idx=0;
-	//while(EOF != (chr = fgetc(file))) {
-	//	printf("%02X ", chr);
-	//	if (++idx%16==0) printf("\n");
-	//}
-	//fclose(file);
-	//return 0;
-
-	//char pass[100];
-	//fprintf(stderr, "Password: ");
-	//scanf("%s", &pass);
-	//fprintf(stderr, "pwd: >%s<\n", pass);
-	if (pass == NULL) {
-		fprintf(stderr, "%sPassword: %s", FIELD, RESET);
-		pass = getpass("");
-	}
-	cx9r_key_tree *kt = NULL;
-	int res = cx9r_kdbx_read(file, pass, flags, &kt);
-	if (res == 0 && mode=='t') dump_tree_group(&kt->root, 0);
-	if (res == 0 && mode=='c') print_key_table(cx9r_key_tree_get_root(kt), 0);
-	if (res == 0 && mode=='i') run_interactive_mode(argv[optind], kt);
-	if (kt != NULL) cx9r_key_tree_free(kt);
-	if (res == 3) puts("Wrong password");
-	//fprintf(stderr, "\nResult: %d\n", res);
-	return res;
-}
-
-// Print CSV
-void print_key_table(cx9r_kt_group *g, int level) {
-	cx9r_kt_entry *e = cx9r_kt_group_get_entries(g);
-	puts("\"Group\",\"Title\",\"Username\",\"Password\",\"URL\",\"Notes\"");
-	while (e != NULL) {
-		if (check_filter(e, g)) {
-			char* username = dq(getfield(e, "UserName"));
-			char* password = dq(getfield(e, "Password"));
-			char* url = dq(getfield(e, "URL"));
-			char* notes = dq(getfield(e, "Notes"));
-			printf("\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n",
-					cx9r_kt_group_get_name(g), cx9r_kt_entry_get_name(e),
-					username, password, url, notes);
-			// Allocated in helper.c::dq()
-			free(username);
-			free(password);
-			free(url);
-			free(notes);
-		}
-		e = cx9r_kt_entry_get_next(e);
-	}
-	cx9r_kt_group *c = cx9r_kt_group_get_children(g);
-	while(c != NULL) {
-		print_key_table(c, level + 1);
-		c = cx9r_kt_group_get_next(c);
-	}
-}
-
-// Table Printing
-const char* trail[10];
-static int print_trail(int n) {
-	int i = 0, l = 0;
-	while(i<=n) l += printf("%s/", trail[i++]);
-	return l;
-}
-void print_key_table_X(cx9r_kt_group *g, int level) {
-	trail[level] = cx9r_kt_group_get_name(g);
-	cx9r_kt_entry *e = cx9r_kt_group_get_entries(g);
-	while (e != NULL) {
-		if (check_filter(e, g)) {
-			int l = print_trail(level);
-			l += printf("%s", cx9r_kt_entry_get_name(e));
-			while(l++<50) putchar('^');
-			printf("\t%s%s%s\n", HIDEPW, getfield(e, "Password"), RESET);
-		}
-		e = cx9r_kt_entry_get_next(e);
-	}
-	cx9r_kt_group *c = cx9r_kt_group_get_children(g);
-	while(c != NULL) {
-		print_key_table(c, level + 1);
-		c = cx9r_kt_group_get_next(c);
-	}
-}
-
-// Tree Printing
+// Print Tree
 static void indent(int n) {
 	while(n-- > 0) printf("%s|%s ", GROUP, RESET);
 }
@@ -209,28 +106,107 @@ static void dump_tree_group(cx9r_kt_group *g, int depth) {
 	if (g->children != NULL) dump_tree_group(g->children, depth + 1);
 }
 
-// Help
+// Print CSV
+void print_key_table(cx9r_kt_group *g, int level) {
+	cx9r_kt_entry *e = cx9r_kt_group_get_entries(g);
+	puts("\"Group\",\"Title\",\"Username\",\"Password\",\"URL\",\"Notes\"");
+	while (e != NULL) {
+		if (check_filter(e, g)) {
+			char* username = dq(getfield(e, "UserName"));
+			char* password = dq(getfield(e, "Password"));
+			char* url = dq(getfield(e, "URL"));
+			char* notes = dq(getfield(e, "Notes"));
+			printf("\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n",
+					cx9r_kt_group_get_name(g), cx9r_kt_entry_get_name(e),
+					username, password, url, notes);
+			// Allocated in helper.c::dq()
+			free(username);
+			free(password);
+			free(url);
+			free(notes);
+		}
+		e = cx9r_kt_entry_get_next(e);
+	}
+	cx9r_kt_group *c = cx9r_kt_group_get_children(g);
+	while(c != NULL) {
+		print_key_table(c, level + 1);
+		c = cx9r_kt_group_get_next(c);
+	}
+}
 
-void print_help(char* commandpath) {
-	char* command = commandpath + strlen(commandpath);
-	while (command >= commandpath && *command != '/') --command;
+// Process commandline
+int main(int argc, char** argv) {
+	int c, flags = 0;
+	char mode = 0;
+	char* pass = NULL;
+	char* command = argv[0] + strlen(argv[0]);
+	while (command >= argv[0] && *command != '/') --command;
 	++command;
-	puts("KDBX Viewer 0.0.2 - Dump KeePass2 .kdbx databases in various formats");
-	puts("Usage:");
-	printf("  %s [-t|-x|-c|-i] [-p PW] [-u] [-s|-S STR] [-v|-h|-?] KDBX\n",
-			command);
-	puts("Commands:");
-	puts("  -t        Dump the KDBX database as a Tree");
-	puts("  -x        Dump the KDBX database in XML format");
-	puts("  -c        Dump the KDBX database in CSV format");
-	puts("  -i        Interactive querying of the KDBX database");
-	puts("Options:");
-	puts("  -p PW     Decrypt file KDBX using PW  (Never use on shared");
-	puts("            computers as PW can be seen in the process list!)");
-	puts("  -s STR    Show database entries with STR in the Title");
-	puts("  -S STR    Show database entries with STR in any field");
-	puts("  -u        Display Password fields Unmasked");
-	puts("  -v        More verbose/debug output");
-	puts("  -h/-?     Display this Help text");
-	puts("Website:    https://gitlab.com/pepa65/kdbxviewer");
+	while ((c = getopt(argc, argv, "xictp:us:S:vVh")) != -1) {
+		switch (c) {
+		case 'v':
+			g_enable_verbose=1;
+			break;
+		case 'x': flags = 2;
+		case 'c':
+		case 't':
+		case 'i':
+			if (mode != 0) diep(-1, "Multiple modes not allowed\n");
+			mode = c;
+			break;
+		case '?':
+		case 'h':
+			print_help(command);
+			return 0;
+		case 'V':
+			printf("%s %s\n", command, VERSION);
+			return 0;
+		case 'u':
+			show_passwords = 1;
+			break;
+		case 'p':
+			pass = optarg;
+			break;
+		case 's':
+			filter_str = optarg;
+			filter_mode = 0;
+			break;
+		case 'S':
+			filter_str = optarg;
+			break;
+		}
+	}
+	if (mode==0) mode = filter_str ? 't' : 'i';
+	if (optind >= argc) diep(-2, "Missing FILENAME argument\n");
+	FILE* file = fopen(argv[optind], "r");
+	if (file == NULL) {
+		fprintf(stderr, "Error opening %s\n", argv[optind]);
+		perror("fopen");
+		return -3;
+	}
+	//int chr, idx=0;
+	//while(EOF != (chr = fgetc(file))) {
+	//	printf("%02X ", chr);
+	//	if (++idx%16==0) printf("\n");
+	//}
+	//fclose(file);
+	//return 0;
+
+	//char pass[100];
+	//fprintf(stderr, "Password: ");
+	//scanf("%s", &pass);
+	//fprintf(stderr, "pwd: >%s<\n", pass);
+	if (pass == NULL) {
+		fprintf(stderr, "%sPassword: %s", FIELD, RESET);
+		pass = getpass("");
+	}
+	cx9r_key_tree *kt = NULL;
+	int res = cx9r_kdbx_read(file, pass, flags, &kt);
+	if (res == 0 && mode=='t') dump_tree_group(&kt->root, 0);
+	if (res == 0 && mode=='c') print_key_table(cx9r_key_tree_get_root(kt), 0);
+	if (res == 0 && mode=='i') run_interactive_mode(argv[optind], kt);
+	if (kt != NULL) cx9r_key_tree_free(kt);
+	if (res == 3) puts("Wrong password");
+	//fprintf(stderr, "\nResult: %d\n", res);
+	return res;
 }

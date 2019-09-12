@@ -13,21 +13,19 @@
 #include <locale.h>
 #include "helper.h"
 
+int show_passwords;
 #define WIDE(str) stfl_ipool_towc(ipool, str)
 
-#include "mainWindow.stfl"
-
+#include "windows.stfl"
 
 struct stfl_ipool *ipool;
 struct stfl_form *form;
 cx9r_kt_group *curGroup;
 int foldercount;
 
-const char* trail [10];
+const char* trail[10];
 int level_pos[10];
 int level = 0;
-
-void updatelist();
 
 void addlistitem(struct stfl_form *f, wchar_t* id, const char* text) {
 	char* nl = strstr(text, "\n");
@@ -83,6 +81,9 @@ void updatecuritem() {
 	if (item != NULL) {
 		stfl_set(form, L"txt_title_val", WIDE(cx9r_kt_entry_get_name(item)));
 		stfl_set(form, L"txt_username_val", WIDE(getfield(item, "UserName")));
+		if (show_passwords)
+			stfl_set(form, L"unmask", L"bg=black,fg=green");
+		else stfl_set(form, L"unmask", L"bg=green,fg=green");
 		stfl_set(form, L"txt_password_val", WIDE(getfield(item, "Password")));
 		stfl_set(form, L"txt_url_val", WIDE(getfield(item, "URL")));
 	}
@@ -95,7 +96,7 @@ void updatecuritem() {
 }
 
 void showdetails(cx9r_kt_entry *item) {
-	struct stfl_form *detform = stfl_create(stfl_code_detailWindow);
+	struct stfl_form *detform = stfl_create(stfl_code_detail);
 	char content[250];
 	//stfl_set(detform, L"content", WIDE(content));
 	cx9r_kt_field *f = cx9r_kt_entry_get_fields(item);
@@ -142,10 +143,12 @@ void parentfolder() {
 
 void updatestatus(const wchar_t* focus) {
 	if (!wcscmp(focus, L"result")) stfl_set(form, L"stat_txt",
-			L"   LEFT  parent     RIGHT  open folder     ^F  search    ^W  quit");
-	else stfl_set(form, L"stat_txt", L"   ESC  back to list");
+			//L"   LEFT  back     RIGHT  view     ^F  search     ^Q  quit");
+			L"   LEFT  back     RIGHT  view     Q  quit");
+	//else stfl_set(form, L"stat_txt", L"   ESC  back to list");
 }
 
+/*
 void show_search() {
 	stfl_set(form, L"searchbar_display", L"1");
 	stfl_set(form, L"search_display", L"1");
@@ -159,6 +162,7 @@ void close_search() {
 	stfl_set(form, L"statbar_display", L"1");
 	stfl_set_focus(form, L"result");
 }
+*/
 
 void updatelist() {
 	ktgroup_to_list(form, curGroup);
@@ -171,7 +175,7 @@ int run_interactive_mode(char* filename, cx9r_key_tree *kt)
 {
 	if (!setlocale(LC_ALL, "")) fprintf(stderr, "WARING: Can't set locale!\n");
 	ipool = stfl_ipool_create(nl_langinfo(CODESET));
-	form = stfl_create(stfl_code_mainWindow);
+	form = stfl_create(stfl_code_main);
 	curGroup = cx9r_key_tree_get_root(kt);
 	//trail[level] = "";
 	//level++;
@@ -179,7 +183,7 @@ int run_interactive_mode(char* filename, cx9r_key_tree *kt)
 	updatestatus(L"result");
 	updatecuritem();
 	char buf[60];
-	snprintf((char*)&buf, 59, "kdbx-viewer: %s", filename);
+	snprintf((char*)&buf, 59, "kdbxviewer: %s", filename);
 	stfl_set(form, L"filetxt", stfl_ipool_towc(ipool, buf));
 	stfl_ipool_flush(ipool);
 	const wchar_t *event = 0;
@@ -192,10 +196,10 @@ int run_interactive_mode(char* filename, cx9r_key_tree *kt)
 		if (event) {
 			if (!wcscmp(event, L"F4") || !wcscmp(event, L"^W") ||
 					!wcscmp(event, L"q")) break;
-			else if (!wcscmp(event, L"^S") || !wcscmp(event, L"^F")) show_search();
-			else if (!wcscmp(event, L"close_search")) close_search();
-			else if (!wcscmp(event, L"ESC") || !wcscmp(event, L"^G"))
-				stfl_set_focus(form, L"result");
+			//else if (!wcscmp(event, L"^S") || !wcscmp(event, L"^F")) show_search();
+			//else if (!wcscmp(event, L"close_search")) close_search();
+			//else if (!wcscmp(event, L"ESC") || !wcscmp(event, L"^G"))
+			//	stfl_set_focus(form, L"result");
 			else if (!wcscmp(event, L"openfolder")) openfolder();
 			else if (!wcscmp(event, L"parentfolder")) parentfolder();
 		}
