@@ -217,7 +217,8 @@ void print_help(char* commandpath) {
 	++command;
 	puts("KDBX Viewer 0.0.2 - Dump KeePass2 .kdbx databases in various formats");
 	puts("Usage:");
-	printf("  %s [-v] [-t|-x|-c|-i] [-p PW] [-u] [-s|-S STR] KDBX\n", command);
+	printf("  %s [-t|-x|-c|-i] [-p PW] [-u] [-s|-S STR] [-v|-h|-?] KDBX\n",
+			command);
 	puts("Commands:");
 	puts("  -t        Dump the KDBX database as a Tree");
 	puts("  -x        Dump the KDBX database in XML format");
@@ -229,5 +230,7 @@ void print_help(char* commandpath) {
 	puts("  -s STR    Show database entries with STR in the Title");
 	puts("  -S STR    Show database entries with STR in any field");
 	puts("  -u        Display Password fields Unmasked");
+	puts("  -v        More verbose/debug output");
 	puts("  -h/-?     Display this Help text");
+	puts("Website:    https://gitlab.com/pepa65/kdbxviewer");
 }
