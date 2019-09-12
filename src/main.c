@@ -1,6 +1,6 @@
 // main.c
 
-#include <stdio.h> // for puts/printf
+#include <stdio.h> // for puts/(f)printf
 #include <stdlib.h> // for exit
 #include <unistd.h> // for getopt
 #include <string.h>
@@ -85,7 +85,7 @@ int main(int argc, char** argv) {
 	if (optind >= argc) diep(-2, "Missing FILENAME argument\n");
 	FILE* file = fopen(argv[optind], "r");
 	if (file == NULL) {
-		printf("Error opening %s\n", argv[optind]);
+		fprintf(stderr, "Error opening %s\n", argv[optind]);
 		perror("fopen");
 		return -3;
 	}
@@ -98,11 +98,11 @@ int main(int argc, char** argv) {
 	//return 0;
 
 	//char pass[100];
-	//printf("Password: ");
+	//fprintf(stderr, "Password: ");
 	//scanf("%s", &pass);
-	//printf("pwd: >%s<\n", pass);
+	//fprintf(stderr, "pwd: >%s<\n", pass);
 	if (pass == NULL) {
-		printf("%sPassword: %s", FIELD, RESET);
+		fprintf(stderr, "%sPassword: %s", FIELD, RESET);
 		pass = getpass("");
 	}
 	cx9r_key_tree *kt = NULL;
@@ -112,22 +112,29 @@ int main(int argc, char** argv) {
 	if (res == 0 && mode=='i') run_interactive_mode(argv[optind], kt);
 	if (kt != NULL) cx9r_key_tree_free(kt);
 	if (res == 3) puts("Wrong password");
-	//printf("\nResult: %d\n", res);
+	//fprintf(stderr, "\nResult: %d\n", res);
 	return res;
 }
 
 // Print CSV
-//char* dq(char *string) {
-
-// "Group","Title","Username","Password","URL","Notes"
 void print_key_table(cx9r_kt_group *g, int level) {
 	cx9r_kt_entry *e = cx9r_kt_group_get_entries(g);
+	puts("\"Group\",\"Title\",\"Username\",\"Password\",\"URL\",\"Notes\"");
 	while (e != NULL) {
-		if (check_filter(e, g))
+		if (check_filter(e, g)) {
+			char* username = dq(getfield(e, "UserName"));
+			char* password = dq(getfield(e, "Password"));
+			char* url = dq(getfield(e, "URL"));
+			char* notes = dq(getfield(e, "Notes"));
 			printf("\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n",
 					cx9r_kt_group_get_name(g), cx9r_kt_entry_get_name(e),
-					getfield(e, "UserName"), getfield(e, "Password"),
-					getfield(e, "URL"), getfield(e, "Notes"));
+					username, password, url, notes);
+			// Allocated in helper.c::dq()
+			free(username);
+			free(password);
+			free(url);
+			free(notes);
+		}
 		e = cx9r_kt_entry_get_next(e);
 	}
 	cx9r_kt_group *c = cx9r_kt_group_get_children(g);
