@@ -23,15 +23,15 @@ struct stfl_form *form;
 cx9r_kt_group *curGroup;
 int foldercount;
 
-const char* trail[10];
+const char *trail[10];
 int level_pos[10];
 int level = 0;
 
-void addlistitem(struct stfl_form *f, wchar_t* id, const char* text) {
-	char* nl = strstr(text, "\n");
+void addlistitem(struct stfl_form *f, wchar_t *id, const char *text) {
+	char *nl = strstr(text, "\n");
 	if (nl) *nl = 0;
 	wchar_t buf[256];
-	const wchar_t* quoted = stfl_quote( stfl_ipool_towc(ipool, text));
+	const wchar_t *quoted = stfl_quote( stfl_ipool_towc(ipool, text));
 	//printf("adding: %ls\n", quoted);
 	swprintf((wchar_t*)&buf, 255, L"{listitem text:%ls}", quoted);
 	//printf("adding: %ls\n", buf);
@@ -141,7 +141,7 @@ void parentfolder() {
 	}
 }
 
-void updatestatus(const wchar_t* focus) {
+void updatestatus(const wchar_t *focus) {
 	if (!wcscmp(focus, L"result")) stfl_set(form, L"stat_txt",
 			//L"   LEFT  back     RIGHT  view     ^F  search     ^Q  quit");
 			L"   LEFT  back     RIGHT  view     Q  quit");
@@ -166,19 +166,17 @@ void close_search() {
 
 void updatelist() {
 	ktgroup_to_list(form, curGroup);
-	char buf[80]; char* pos = &buf; strcpy(pos, " /"); pos+=2; int i;
+	char buf[80]; char *pos = &buf; strcpy(pos, " /"); pos+=2; int i;
 	for(i=0; i<level; i++) pos += snprintf(pos, 80-(pos-buf), "%s/", trail[i]);
 	stfl_set(form, L"pathtxt", WIDE(buf));
 }
 
-int run_interactive_mode(char* filename, cx9r_key_tree *kt)
+int run_interactive_mode(char *filename, cx9r_key_tree *kt)
 {
 	if (!setlocale(LC_ALL, "")) fprintf(stderr, "WARING: Can't set locale!\n");
 	ipool = stfl_ipool_create(nl_langinfo(CODESET));
 	form = stfl_create(stfl_code_main);
 	curGroup = cx9r_key_tree_get_root(kt);
-	//trail[level] = "";
-	//level++;
 	updatelist();
 	updatestatus(L"result");
 	updatecuritem();
@@ -190,7 +188,7 @@ int run_interactive_mode(char* filename, cx9r_key_tree *kt)
 	while (1) {
 		event = stfl_run(form, 0);
 		wchar_t dbg[100];
-		const wchar_t* focus = stfl_get_focus(form);
+		const wchar_t *focus = stfl_get_focus(form);
 		swprintf((wchar_t*)&dbg, 59, L"%ls %ls", event, focus);
 		stfl_set(form, L"debug", dbg);
 		if (event) {

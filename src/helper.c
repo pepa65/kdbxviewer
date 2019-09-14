@@ -9,7 +9,7 @@
 
 #include "helper.h"
 
-const char* getfield(cx9r_kt_entry* e, char* name) {
+const char *getfield(cx9r_kt_entry *e, char *name) {
 	cx9r_kt_field *f = cx9r_kt_entry_get_fields(e);
 	while(f != NULL) {
 		if (strcmp(cx9r_kt_field_get_name(f), name) == 0)
@@ -20,10 +20,9 @@ const char* getfield(cx9r_kt_entry* e, char* name) {
 }
 
 // Double the doublequotes for CSV
-char* dq(char* field) {
+char *dq(char *field) {
 	// Needs to be freed by the caller
-	char* dqfield = malloc(2*strlen(field));
-	char* pointer = dqfield;
+	char *dqfield = malloc(2*strlen(field)), *pointer = dqfield;
 	while (*field) {
 		*pointer = *(field++);
 		if (*(pointer++) == '"') *(pointer++) = '"';
