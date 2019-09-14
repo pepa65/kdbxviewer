@@ -1,5 +1,5 @@
 # kbdxviewer
-* Version: **0.0.2**
+* Version: **0.1.0**
 * Description: Interactively access or dump KeePass2 `.kdbx` database files
   as XML, CSV or in text/tree representation.
 * Using: cryptkeyper/libcx9r from https://github.com/jhagmar/cryptkeyper
@@ -8,20 +8,23 @@
 
 ## Usage
 ```
-kbdxviewer [-t|-x|-c|-i] [-p PW] [-u] [-s|-S STR] [-v|-h|-?] KDBX
+kbdxviewer [-i|-t|-x|-c] [-p PW] [-u] [[-s|-S] STR] [-v|-V|-h] [KDBX]
 
   Commands:
-    -t        Dump the KDBX database as a Tree
-    -x        Dump the KDBX database in XML format
-    -c        Dump the KDBX database in CSV format
-    -i        Interactive querying of the KDBX database
+    -i          Interactive viewing (default if no -s/-S is used)
+    -t          Output as Tree (default if -s/-S is used)
+    -x          Output as XML
+    -c          Output as CSV
 
   Options:
-    -p PW     Decrypt file KDBX using PW  (Never use on shared computers
-              as PW can be seen in the process list!)
-    -s STR    Show database entries with STR in the Title
-    -S STR    Show database entries with STR in any field
-    -u        Display Password fields Unmasked
-    -v        More verbose/debug output
-    -h/-?     Display this Help text
+    -p PW       Decrypt file KDBX using PW  (Never use on shared computers
+                as PW can be seen in the process list!)
+    [-s] STR    Show database entries with STR in the Title
+    -S STR      Show database entries with STR in any field
+    -u          Display Password fields Unmasked
+    -V          Display Version
+    -v          More Verbose/debug output
+    -h          Display this Help text
+The configfile ~/.kdbxviewer is used for reading and storing KDBX files.
+Website:        https://gitlab.com/pepa65/kdbxviewer
 ```

@@ -48,7 +48,7 @@ void print_help(char *self, char *configfile) {
 	puts("  -h          Display this Help text");
 	printf("The configfile %s is used for reading and storing KDBX files.\n",
 			configfile);
-	puts("Website:    https://gitlab.com/pepa65/kdbxviewer");
+	puts("Website:      https://gitlab.com/pepa65/kdbxviewer");
 }
 
 int check_filter(cx9r_kt_entry *e, cx9r_kt_group *g) {
@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
 		case 'c':
 		case 't':
 		case 'i':
-			if (command != 0) abort(-1, "Multiple commands not allowed\n");
+			if (command != 0) abort(-1, "%sMultiple commands not allowed\n", GROUP);
 			command = c;
 			break;
 		case '?':
@@ -168,10 +168,12 @@ int main(int argc, char **argv) {
 			password = optarg;
 			break;
 		case 's':
-			if (search != NULL) abort(-2, "Extraneous search term: -s %s\n", optarg);
+			if (search != NULL) abort(-2, "%sExtraneous search term: -s %s\n",
+					GROUP, optarg);
 			searchall = FALSE;
 		case 'S':
-			if (search != NULL) abort(-3, "Extraneous search term: -S %s\n", optarg);
+			if (search != NULL) abort(-3, "%sExtraneous search term: -S %s\n",
+					GROUP, optarg);
 			search = optarg;
 		}
 	}
@@ -196,19 +198,20 @@ int main(int argc, char **argv) {
 		if (notinconfig) {
 			strcpy(kdbxfile, argv[optind]);
 			if ((kdbx = fopen(kdbxfile, "r")) == NULL)
-				abort(-4, "Can't open database file: %s\n", kdbxfile);
+				abort(-4, "%sCan't open database file: %s\n", GROUP, kdbxfile);
 		}
 		else if (search == NULL) search = argv[optind];
 			else strcpy(kdbxfile, argv[optind]);
 	}
 	else if (notinconfig)
-		abort(-6, "No database specified on commandline or in the configfile\n");
+		abort(-5, "%sNo database specified on commandline or in the configfile\n",
+				GROUP);
 	if (++optind < argc)
-		abort(-7, "Extraneous commandline argument: %s\n", argv[optind]);
+		abort(-6, "%sExtraneous commandline argument: %s\n", GROUP, argv[optind]);
 
 	// Open the database
 	if (password == NULL) {
-		fprintf(stderr, "%sPassword: %s", FIELD, RESET);
+		warn("%sPassword: %s", FIELD, RESET);
 		password = getpass("");
 	}
 	cx9r_key_tree *kt = NULL;
@@ -216,15 +219,15 @@ int main(int argc, char **argv) {
 	if (!err) {
 		if (notinconfig)
 			if ((config = fopen(configfile, "a")) == NULL)
-				warn("Can't write to configfile %s\n", configfile);
+				warn("%sCan't write to configfile %s%s\n", TITLE, configfile, RESET);
 			else fprintf(config, "%s\n", kdbxfile);
 		if (command == 't') dump_tree_group(&kt->root, 0);
 		if (command == 'c') print_key_table(cx9r_key_tree_get_root(kt), 0);
 		if (command == 'i') run_interactive_mode(kdbxfile, kt);
 	}
 	else {
-		if (err < 3) warn("Invalid database");
-		if (err == 3) warn("Wrong password");
+		if (err < 3) warn("%sInvalid database%s", TITLE, RESET);
+		if (err == 3) warn("%sWrong password%s", TITLE, RESET);
 	}
 	if (kt != NULL) cx9r_key_tree_free(kt);
 	return err;
