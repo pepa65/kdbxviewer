@@ -14,7 +14,7 @@
 #include "helper.h"
 
 char *search = NULL;
-bool searchall = TRUE, unmask = FALSE;
+bool searchall = FALSE, unmask = FALSE;
 
 #define BGREEN "\033[1m\033[92m"
 #define BRED "\033[1m\033[91m"
@@ -179,9 +179,7 @@ int main(int argc, char **argv) {
 			password = optarg;
 			break;
 		case 's':
-			if (search != NULL) abort(-2, "%sExtraneous search term: -s %s\n", ERR,
-					optarg);
-			searchall = FALSE;
+			searchall = TRUE;
 		case 'S':
 			if (search != NULL) abort(-3, "%sExtraneous search term: -S %s\n", ERR,
 					optarg);
