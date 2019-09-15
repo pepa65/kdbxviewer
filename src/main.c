@@ -177,7 +177,6 @@ int main(int argc, char **argv) {
 			search = optarg;
 		}
 	}
-	if (command == 0) command = (search == NULL) ? 'i' : 't';
 
 	// Try configfile for database filename
 	FILE *config = NULL, *kdbx = NULL;
@@ -208,6 +207,7 @@ int main(int argc, char **argv) {
 				GROUP);
 	if (++optind < argc)
 		abort(-6, "%sExtraneous commandline argument: %s\n", GROUP, argv[optind]);
+	if (command == 0) command = (search == NULL) ? 'i' : 't';
 
 	// Open the database
 	if (password == NULL) {
