@@ -16,11 +16,22 @@
 char *search = NULL;
 bool searchall = TRUE, unmask = FALSE;
 
-#define HIDEPW unmask ? "" : "\033[47;37m"
-#define GROUP "\033[1m\033[31m"
-#define TITLE "\033[1m\033[33m"
-#define FIELD "\033[36m"
+#define BGREEN "\033[1m\033[92m"
+#define BRED "\033[1m\033[91m"
+#define BYELLOW "\033[1m\033[93m"
+#define BCYAN "\033[1m\033[36m"
+#define CYAN "\033[36m"
+#define YELLOW "\033[33m"
+#define DWHITE "\033[47;37m"
 #define RESET "\033[0m"
+
+#define HIDEPW unmask ? "" : DWHITE
+#define GROUP BGREEN
+#define TITLE BYELLOW
+#define FIELD CYAN
+#define ERR BRED
+#define PW YELLOW
+#define WARN BYELLOW
 
 #define abort(code, msg...) do {fprintf(stderr, msg); exit(code);} while(0)
 #define warn(msg...) do {fprintf(stderr, msg);} while(0)
@@ -151,7 +162,7 @@ int main(int argc, char **argv) {
 		case 'c':
 		case 't':
 		case 'i':
-			if (command != 0) abort(-1, "%sMultiple commands not allowed\n", GROUP);
+			if (command != 0) abort(-1, "%sMultiple commands not allowed\n", ERR);
 			command = c;
 			break;
 		case '?':
@@ -168,12 +179,12 @@ int main(int argc, char **argv) {
 			password = optarg;
 			break;
 		case 's':
-			if (search != NULL) abort(-2, "%sExtraneous search term: -s %s\n",
-					GROUP, optarg);
+			if (search != NULL) abort(-2, "%sExtraneous search term: -s %s\n", ERR,
+					optarg);
 			searchall = FALSE;
 		case 'S':
-			if (search != NULL) abort(-3, "%sExtraneous search term: -S %s\n",
-					GROUP, optarg);
+			if (search != NULL) abort(-3, "%sExtraneous search term: -S %s\n", ERR,
+					optarg);
 			search = optarg;
 		}
 	}
@@ -197,21 +208,21 @@ int main(int argc, char **argv) {
 		if (notinconfig) {
 			strcpy(kdbxfile, argv[optind]);
 			if ((kdbx = fopen(kdbxfile, "r")) == NULL)
-				abort(-4, "%sCan't open database file: %s\n", GROUP, kdbxfile);
+				abort(-4, "%sCan't open database file: %s\n", ERR, kdbxfile);
 		}
 		else if (search == NULL) search = argv[optind];
 			else strcpy(kdbxfile, argv[optind]);
 	}
 	else if (notinconfig)
 		abort(-5, "%sNo database specified on commandline or in the configfile\n",
-				GROUP);
+				ERR);
 	if (++optind < argc)
-		abort(-6, "%sExtraneous commandline argument: %s\n", GROUP, argv[optind]);
+		abort(-6, "%sExtraneous commandline argument: %s\n", ERR, argv[optind]);
 	if (command == 0) command = (search == NULL) ? 'i' : 't';
 
 	// Open the database
 	if (password == NULL) {
-		warn("%sPassword: %s", FIELD, RESET);
+		warn("%sPassword: %s", PW, RESET);
 		password = getpass("");
 	}
 	cx9r_key_tree *kt = NULL;
@@ -219,15 +230,15 @@ int main(int argc, char **argv) {
 	if (!err) {
 		if (notinconfig)
 			if ((config = fopen(configfile, "a")) == NULL)
-				warn("%sCan't write to configfile %s%s\n", TITLE, configfile, RESET);
+				warn("%sCan't write to configfile %s%s\n", WARN, configfile, RESET);
 			else fprintf(config, "%s\n", kdbxfile);
 		if (command == 't') dump_tree_group(&kt->root, 0);
 		if (command == 'c') print_key_table(cx9r_key_tree_get_root(kt), 0);
 		if (command == 'i') run_interactive_mode(kdbxfile, kt);
 	}
 	else {
-		if (err < 3) warn("%sInvalid database%s", TITLE, RESET);
-		if (err == 3) warn("%sWrong password%s", TITLE, RESET);
+		if (err < 3) warn("%sInvalid database%s\n", WARN, RESET);
+		if (err == 3) warn("%sWrong password%s\n", WARN, RESET);
 	}
 	if (kt != NULL) cx9r_key_tree_free(kt);
 	return err;

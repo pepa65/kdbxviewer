@@ -897,6 +897,7 @@ DEBUG("1 ");
 	CHEQ(((err = kdbx_read_header(stream, ctx)) == CX9R_OK), cleanup_ctx);
 DEBUG("2 ");
 	CHEQ(((err = generate_key(ctx, passphrase)) == CX9R_OK), cleanup_ctx);
+	memset(passphrase, 0, strlen(passphrase));
 DEBUG("3 ");
 	CHECK(((decrypted_stream = cx9r_aes256_cbc_sopen(stream, ctx->key, ctx->iv)) != NULL),
 			err, CX9R_STREAM_OPEN_ERR, cleanup_ctx);
