@@ -1,5 +1,5 @@
 // main.c
-# define VERSION "0.1.0"
+# define VERSION "0.1.1"
 # define CONFIGFILE "/.kdbxviewer"
 # define PATHLEN 2048
 
@@ -41,21 +41,20 @@ void print_help(char *self, char *configfile) {
 	printf("%s %s - Dump KeePass2 .kdbx databases in various formats\n",
 			self, VERSION);
 	puts("Usage:");
-	printf("  %s [-i|-t|-x|-c] [-p PW] [-u] [[-s|-S] STR] [-v|-V|-h] [KDBX]\n",
+	printf("  %s [-i|-t|-x|-c] [-p PW] [-u] [[-s|-S] STR] [-V|-h] [KDBX]\n",
 			self);
 	puts("Commands:");
-	puts("  -i          Interactive viewing (default if no -s/-S is used)");
-	puts("  -t          Output as Tree (default if -s/-S is used)");
+	puts("  -i          Interactive viewing (default if no search is used)");
+	puts("  -t          Output as Tree (default if search is used)");
 	puts("  -x          Output as XML");
 	puts("  -c          Output as CSV");
 	puts("Options:");
 	puts("  -p PW       Decrypt file KDBX using PW  (Never use on shared");
 	puts("              computers as PW can be seen in the process list!)");
+	puts("  -u          Display Password fields Unmasked");
 	puts("  [-s] STR    Select only entries with STR in the Title");
 	puts("  -S STR      Select only entries with STR in any field");
-	puts("  -u          Display Password fields Unmasked");
 	puts("  -V          Display Version");
-	puts("  -v          More Verbose/debug output");
 	puts("  -h          Display this Help text");
 	printf("The configfile %s is used for reading and storing KDBX files.\n",
 			configfile);
@@ -153,11 +152,8 @@ int main(int argc, char **argv) {
 		*configfile = strcat(getenv("HOME"), CONFIGFILE);
 	while (self >= argv[0] && *self != '/') --self;
 	++self;
-	while ((c = getopt(argc, argv, "xictp:us:S:vVh")) != -1) {
+	while ((c = getopt(argc, argv, "xictp:us:S:Vh")) != -1) {
 		switch (c) {
-		case 'v':
-			g_enable_verbose=1;
-			break;
 		case 'x': flags = 2;
 		case 'c':
 		case 't':
@@ -165,7 +161,6 @@ int main(int argc, char **argv) {
 			if (command != 0) abort(-1, "%sMultiple commands not allowed\n", ERR);
 			command = c;
 			break;
-		case '?':
 		case 'h':
 			print_help(self, configfile);
 			return 0;
@@ -178,9 +173,9 @@ int main(int argc, char **argv) {
 		case 'p':
 			password = optarg;
 			break;
-		case 's':
-			searchall = TRUE;
 		case 'S':
+			searchall = TRUE;
+		case 's':
 			if (search != NULL) abort(-3, "%sExtraneous search term: -S %s\n", ERR,
 					optarg);
 			search = optarg;
