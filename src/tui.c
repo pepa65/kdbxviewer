@@ -13,7 +13,7 @@
 #include <locale.h>
 #include "helper.h"
 
-int show_passwords;
+int unmask;
 #define WIDE(str) stfl_ipool_towc(ipool, str)
 
 #include "windows.stfl"
@@ -27,7 +27,7 @@ const char *trail[10];
 int level_pos[10];
 int level = 0;
 
-void addlistitem(struct stfl_form *f, wchar_t *id, const char *text) {
+void addlistitem(struct stfl_form *f, wchar_t *id, char *text) {
 	char *nl = strstr(text, "\n");
 	if (nl) *nl = 0;
 	wchar_t buf[256];
@@ -35,7 +35,7 @@ void addlistitem(struct stfl_form *f, wchar_t *id, const char *text) {
 	//printf("adding: %ls\n", quoted);
 	swprintf((wchar_t*)&buf, 255, L"{listitem text:%ls}", quoted);
 	//printf("adding: %ls\n", buf);
-	stfl_modify(f, id, L"append", buf);
+	stfl_modify(f, id, L"append", (wchar_t*)buf);
 	if (nl) addlistitem(f, id, nl+1);
 }
 
@@ -54,7 +54,8 @@ void ktgroup_to_list(struct stfl_form *f, cx9r_kt_group *g) {
 	cx9r_kt_entry *e = cx9r_kt_group_get_entries(g);
 	while (e != NULL) {
 		//printf("entry %s\n", cx9r_kt_entry_get_name(e));
-		snprintf(&buf, 255, "  % -30s % -30s %s", cx9r_kt_group_get_name(e), getfield(e, "UserName"), getfield(e, "URL"));
+		//snprintf(&buf, 255, "  % -30s % -30s %s", cx9r_kt_group_get_name(e), getfield(e, "UserName"), getfield(e, "URL"));
+		snprintf(&buf, 255, "  % -30s % -30s %s", cx9r_kt_entry_get_name(e), getfield(e, "UserName"), getfield(e, "URL"));
 		addlistitem(f, L"result", &buf);
 		e = cx9r_kt_entry_get_next(e);
 	}
@@ -81,9 +82,9 @@ void updatecuritem() {
 	if (item != NULL) {
 		stfl_set(form, L"txt_title_val", WIDE(cx9r_kt_entry_get_name(item)));
 		stfl_set(form, L"txt_username_val", WIDE(getfield(item, "UserName")));
-		if (show_passwords)
-			stfl_set(form, L"unmask", L"bg=black,fg=green");
-		else stfl_set(form, L"unmask", L"bg=green,fg=green");
+		if (unmask)
+			stfl_set(form, L"unmask", L"bg=black,fg=white");
+		else stfl_set(form, L"unmask", L"bg=white,fg=white");
 		stfl_set(form, L"txt_password_val", WIDE(getfield(item, "Password")));
 		stfl_set(form, L"txt_url_val", WIDE(getfield(item, "URL")));
 	}
@@ -113,6 +114,13 @@ void showdetails(cx9r_kt_entry *item) {
 	stfl_free(detform);
 }
 
+void updatelist() {
+	ktgroup_to_list(form, curGroup);
+	char buf[80]; char *pos = &buf; strcpy(pos, " /"); pos+=2; int i;
+	for(i=0; i<level; i++) pos += snprintf(pos, 80-(pos-buf), "%s/", trail[i]);
+	stfl_set(form, L"pathtxt", WIDE(buf));
+}
+
 void openfolder() {
 	int idx = wcstol(stfl_get(form, L"listidx"), NULL, 10);
 	cx9r_kt_group *child = getchild(curGroup, idx);
@@ -135,7 +143,7 @@ void parentfolder() {
 		curGroup = cx9r_kt_group_get_parent(curGroup);
 		level--;
 		updatelist();
-		wchar_t buf[6];
+		const wchar_t buf[6];
 		swprintf(&buf, 5, L"%d", level_pos[level]);
 		stfl_set(form, L"listidx", &buf);
 	}
@@ -163,13 +171,6 @@ void close_search() {
 	stfl_set_focus(form, L"result");
 }
 */
-
-void updatelist() {
-	ktgroup_to_list(form, curGroup);
-	char buf[80]; char *pos = &buf; strcpy(pos, " /"); pos+=2; int i;
-	for(i=0; i<level; i++) pos += snprintf(pos, 80-(pos-buf), "%s/", trail[i]);
-	stfl_set(form, L"pathtxt", WIDE(buf));
-}
 
 int run_interactive_mode(char *filename, cx9r_key_tree *kt)
 {

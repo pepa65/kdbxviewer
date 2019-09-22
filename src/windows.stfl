@@ -60,7 +60,7 @@ wchar_t *stfl_code_main =
 	L"\n         .expand:0                                        "
 	L"\n         text[filetxt]:\"filename_test1.xxx \"                     "
 	L"\n       label                                              "
-	L"\n         style_normal:fg=green                                        "
+	L"\n         style_normal:fg=white                                        "
 	L"\n         .expand:w                                        "
 	L"\n         text[pathtxt]:\"/the/current/path/in/this/file\"                     "
 
@@ -133,7 +133,7 @@ wchar_t *stfl_code_main =
 	L"\n       .expand:h                                        "
 	L"\n       .colspan:3                                       "
 	L"\n       label[txt_password]                                        "
-	L"\n         @style_normal[unmask]:bg=black,fg=green               "
+	L"\n         @style_normal[unmask]:bg=black,fg=white               "
 	L"\n         text[txt_password_val]:\"\"                            "
 	L"\n         .expand:0                                        "
 	     

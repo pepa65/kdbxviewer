@@ -1,5 +1,5 @@
 // main.c
-# define VERSION "0.1.1"
+# define VERSION "0.1.2"
 # define CONFIGFILE "/.kdbxviewer"
 # define PATHLEN 2048
 
@@ -14,7 +14,8 @@
 #include "helper.h"
 
 char *search = NULL;
-bool searchall = FALSE, unmask = FALSE;
+bool searchall = FALSE;
+int unmask = 0;
 
 #define BGREEN "\033[1m\033[92m"
 #define BRED "\033[1m\033[91m"
@@ -29,12 +30,9 @@ bool searchall = FALSE, unmask = FALSE;
 #define GROUP BGREEN
 #define TITLE BYELLOW
 #define FIELD CYAN
-#define ERR BRED
-#define PW YELLOW
-#define WARN BYELLOW
-
-#define abort(code, msg...) do {fprintf(stderr, msg); exit(code);} while(0)
-#define warn(msg...) do {fprintf(stderr, msg);} while(0)
+#define ERRC BRED
+#define PWC YELLOW
+#define WARNC BYELLOW
 
 // Display Help
 void print_help(char *self, char *configfile) {
@@ -58,6 +56,8 @@ void print_help(char *self, char *configfile) {
 	puts("  -h          Display this Help text");
 	printf("The configfile %s is used for reading and storing KDBX files.\n",
 			configfile);
+	puts("When two arguments without commandline option are given, they are ");
+	puts(" taken to be the search argument STR and the database KDBX.");
 	puts("Website:      https://gitlab.com/pepa65/kdbxviewer");
 }
 
@@ -147,9 +147,16 @@ void print_key_table(cx9r_kt_group *g, int level) {
 
 // Process commandline
 int main(int argc, char **argv) {
-	int c, flags = 0;
-	char command = 0, *password = NULL, *self = argv[0] + strlen(argv[0]),
+	long unsigned int n = PATHLEN, c, flags = 0;
+	char *kdbxfile = malloc(n), *kdbxconf = malloc(n), command = 0,
+		*password = NULL, *self = argv[0] + strlen(argv[0]),
 		*configfile = strcat(getenv("HOME"), CONFIGFILE);
+	FILE *config = NULL, *kdbx = NULL;
+
+#define abort(code, msg...) do {fprintf(stderr, msg); free(kdbxfile);\
+	free(kdbxconf); exit(code);} while(0)
+#define warn(msg...) do {fprintf(stderr, msg);} while(0)
+
 	while (self >= argv[0] && *self != '/') --self;
 	++self;
 	while ((c = getopt(argc, argv, "xictp:us:S:Vh")) != -1) {
@@ -158,7 +165,7 @@ int main(int argc, char **argv) {
 		case 'c':
 		case 't':
 		case 'i':
-			if (command != 0) abort(-1, "%sMultiple commands not allowed\n", ERR);
+			if (command != 0) abort(-1, "%sMultiple commands not allowed\n", ERRC);
 			command = c;
 			break;
 		case 'h':
@@ -168,7 +175,7 @@ int main(int argc, char **argv) {
 			printf("%s %s\n", self, VERSION);
 			return 0;
 		case 'u':
-			unmask = TRUE;
+			unmask = 1;
 			break;
 		case 'p':
 			password = optarg;
@@ -176,62 +183,71 @@ int main(int argc, char **argv) {
 		case 'S':
 			searchall = TRUE;
 		case 's':
-			if (search != NULL) abort(-3, "%sExtraneous search term: -S %s\n", ERR,
+			if (search != NULL) abort(-2, "%sExtraneous search term: -S %s\n", ERRC,
 					optarg);
 			search = optarg;
 		}
 	}
 
 	// Try configfile for database filename
-	FILE *config = NULL, *kdbx = NULL;
-	bool notinconfig = TRUE, configopened = FALSE;
-	char *kdbxfile;
-	int n = PATHLEN;
-	if ((config = fopen(configfile, "r")) != NULL) {
-		configopened = TRUE;
+	*kdbxfile = 0, *kdbxconf = 0;
+	if ((config = fopen(configfile, "r")) != NULL)
 		while (getline(&kdbxfile, &n, config) != -1) {
 			*(kdbxfile+strlen(kdbxfile)-1) = 0;
-			if ((kdbx = fopen(kdbxfile, "r")) != NULL) break;
+			// Find the latest existing file
+			if ((kdbx = fopen(kdbxfile, "r")) != NULL) strcpy(kdbxconf, kdbxfile);
+			*kdbxfile = 0;
 		}
-		if (kdbx != NULL) notinconfig = FALSE;
-	}
 
 	// Check the rest of the commandline
 	if (optind < argc) {
-		if (notinconfig) {
+		if (search == NULL) search = argv[optind];
+		else {
 			strcpy(kdbxfile, argv[optind]);
 			if ((kdbx = fopen(kdbxfile, "r")) == NULL)
-				abort(-4, "%sCan't open database file: %s\n", ERR, kdbxfile);
+				abort(-3, "%sCan't open database file: %s\n", ERRC, kdbxfile);
 		}
-		else if (search == NULL) search = argv[optind];
-			else strcpy(kdbxfile, argv[optind]);
 	}
-	else if (notinconfig)
-		abort(-5, "%sNo database specified on commandline or in the configfile\n",
-				ERR);
 	if (++optind < argc)
-		abort(-6, "%sExtraneous commandline argument: %s\n", ERR, argv[optind]);
+		if (*kdbxfile) abort(-4, "%sExtraneous argument: %s", ERRC, argv[optind]);
+		else {
+			strcpy(kdbxfile, argv[optind]);
+			if ((kdbx = fopen(kdbxfile, "r")) == NULL)
+				abort(-3, "%sCan't open database file: %s\n", ERRC, kdbxfile);
+		}
+	if (++optind < argc)
+		abort(-5, "%sExtraneous argument: %s", ERRC, argv[optind]);
+	if (*kdbxfile == 0)
+		if (*kdbxconf == 0)
+			abort(-6, "%sNo database specified on commandline or in configfile\n",
+				ERRC);
+		else {
+			strcpy(kdbxfile, kdbxconf);
+			if ((kdbx = fopen(kdbxfile, "r")) == NULL)
+				abort(-7, "%sCan't open database file: %s\n", ERRC, kdbxfile);
+		}
+
 	if (command == 0) command = (search == NULL) ? 'i' : 't';
 
 	// Open the database
 	if (password == NULL) {
-		warn("%sPassword: %s", PW, RESET);
+		warn("%sPassword: %s", PWC, RESET);
 		password = getpass("");
 	}
 	cx9r_key_tree *kt = NULL;
 	cx9r_err err = cx9r_kdbx_read(kdbx, password, flags, &kt);
 	if (!err) {
-		if (notinconfig)
-			if ((config = fopen(configfile, "a")) == NULL)
-				warn("%sCan't write to configfile %s%s\n", WARN, configfile, RESET);
-			else fprintf(config, "%s\n", kdbxfile);
+		if ((config = fopen(configfile, "a")) == NULL)
+			warn("%sCan't write to configfile %s%s\n", WARNC, configfile, RESET);
+		else if (strcmp(kdbxconf, kdbxfile) != 0)
+			fprintf(config, "%s\n", kdbxfile);
 		if (command == 't') dump_tree_group(&kt->root, 0);
 		if (command == 'c') print_key_table(cx9r_key_tree_get_root(kt), 0);
 		if (command == 'i') run_interactive_mode(kdbxfile, kt);
 	}
 	else {
-		if (err < 3) warn("%sInvalid database%s\n", WARN, RESET);
-		if (err == 3) warn("%sWrong password%s\n", WARN, RESET);
+		if (err < 3) warn("%sInvalid database%s\n", WARNC, RESET);
+		if (err == 3) warn("%sWrong password%s\n", WARNC, RESET);
 	}
 	if (kt != NULL) cx9r_key_tree_free(kt);
 	return err;

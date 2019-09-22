@@ -126,7 +126,7 @@ DEBUG("Reading magic...");
 			CX9R_BAD_MAGIC, kdbx_magic_bail);
 
 	kdbx_magic_bail:
-DEBUG("%016llX  (%d)\n", *(uint64_t*)&magic, err);
+DEBUG("%016lX  (%d)\n", *(uint64_t*)&magic, err);
 	return err;
 }
 

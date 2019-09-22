@@ -20,7 +20,7 @@ const char *getfield(cx9r_kt_entry *e, char *name) {
 }
 
 // Double the doublequotes for CSV
-char *dq(char *field) {
+char *dq(const char *field) {
 	// Needs to be freed by the caller
 	char *dqfield = malloc(2*strlen(field)), *pointer = dqfield;
 	while (*field) {
