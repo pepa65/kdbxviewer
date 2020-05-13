@@ -1,5 +1,5 @@
 # kbdxviewer
-* Version: **0.1.3**
+* Version: **0.1.4**
 * Description: View KeePass2 `.kdbx` database files in various formats and ways
   as XML, CSV or in text/tree representation.
 * Using: cryptkeyper/libcx9r from https://github.com/jhagmar/cryptkeyper
@@ -8,7 +8,7 @@
 
 ## Usage
 ```
-  kdbxviewer [-i|-t|-x|-c|-h|-V] [-p PW] [-u] [[-s|-S] STR] [-d KDBX]
+  kdbxviewer [-i|-t|-x|-c|-h|-V] [-A] [-p PW] [-u] [[-s|-S] STR] [-d KDBX]
 Commands:
   -i          Interactive viewing (default if no search is used)
   -t          Output as Tree (default if search is used)
@@ -17,6 +17,7 @@ Commands:
   -h          Display this Help text
   -V          Display Version
 Options:
+  -A          Analyse / debug
   -p PW       Decrypt file KDBX using PW  (Never use on shared
                 computers as PW can be seen in the process list!)
   -u          Display Password fields Unmasked

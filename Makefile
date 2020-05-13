@@ -8,5 +8,5 @@ kdbxviewer: $(LIBKX9R_CODE) src/main.c src/tui.c src/windows.stfl src/helper.c
 	gcc -g -o bin/kdbxviewer -I./include/ -I./libcx9r/ src/main.c src/helper.c $(DEFINES) $(LIBKX9R_CODE) src/tui.c -lgcrypt -lexpat -lz -lstfl -lncursesw -lmenu -Wno-pointer-sign
 
 install:
-	mkdir -p $(DESTDIR)/usr/bin
+	mkdir -p $(DESTDIR)/usr/local/bin
 	cp bin/kdbxviewer $(DESTDIR)/usr/local/bin

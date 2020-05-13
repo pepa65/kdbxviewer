@@ -1,5 +1,5 @@
 // main.c
-# define VERSION "0.1.3"
+# define VERSION "0.1.4"
 # define CONFIGFILE "/.kdbxviewer"
 # define PATHLEN 2048
 
@@ -38,8 +38,8 @@ int unmask = 0;
 void print_help(char *self, char *configfile) {
 	printf("%s %s - View KeePass2 .kdbx databases in various formats and ways\n",
 			self, VERSION);
-	puts("Usage:");
-	printf("  %s [-i|-t|-x|-c|-h|-V] [-p PW] [-u] [[-s|-S] STR] [-d KDBX]\n",
+	puts("Usage:  ");
+	printf("%s [-i|-t|-x|-c|-h|-V] [-A] [-p PW] [-u] [[-s|-S] STR] [-d KDBX]\n",
 			self);
 	puts("Commands:");
 	puts("  -i          Interactive viewing (default if no search is used)");
@@ -49,6 +49,7 @@ void print_help(char *self, char *configfile) {
 	puts("  -h          Display this Help text");
 	puts("  -V          Display Version");
 	puts("Options:");
+	puts("  -A          Analyse / debug");
 	puts("  -p PW       Decrypt file KDBX using PW  (Never use on shared");
 	puts("                computers as PW can be seen in the process list!)");
 	puts("  -u          Display Password fields Unmasked");
@@ -159,7 +160,7 @@ int main(int argc, char **argv) {
 
 	while (self >= argv[0] && *self != '/') --self;
 	++self;
-	while ((opt = getopt(argc, argv, "xictp:us:S:d:Vh")) != -1) {
+	while ((opt = getopt(argc, argv, "xictp:uAs:S:d:Vh")) != -1) {
 		switch (opt) {
 		case 'x': flags = 2;
 		case 'c':
@@ -169,6 +170,9 @@ int main(int argc, char **argv) {
 		case 'V':
 			if (command != 0) abort(-1, "%sMultiple commands not allowed\n", ERRC);
 			command = opt;
+			break;
+		case 'A':
+			g_enable_verbose = 1;
 			break;
 		case 'u':
 			unmask = 1;
@@ -241,7 +245,7 @@ int main(int argc, char **argv) {
 	}
 	else {
 		if (err == 16) warn("%sPassword invalid%s\n", WARNC, RESET);
-		else warn("%sDatabase error%s\n", WARNC, RESET);
+		else warn("%sDatabase error %d%s\n", WARNC, err, RESET);
 	}
 	if (kt != NULL) cx9r_key_tree_free(kt);
 	return err;
