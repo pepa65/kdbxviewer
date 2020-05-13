@@ -225,7 +225,7 @@ int main(int argc, char **argv) {
 
 	// Open the database
 	if (password == NULL) {
-		warn("%sPassword: %s", PWC, RESET);
+		warn("Opening database %s%s\n%sPassword: %s", FIELD, kdbxfile, PWC, RESET);
 		password = getpass("");
 	}
 	cx9r_key_tree *kt = NULL;
