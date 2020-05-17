@@ -3,7 +3,7 @@
 * Description: View KeePass2 `.kdbx` database files in various formats and ways
   as XML, CSV or in text/tree representation.
 * Using: cryptkeyper/libcx9r from https://github.com/jhagmar/cryptkeyper
-* After: https://max-weller.github.io/kdbx-viewer
+* After: https://github.com/luelista/kdbxviewer
 * License: GPLv2
 
 ## Usage

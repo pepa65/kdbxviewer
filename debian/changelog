@@ -10,4 +10,8 @@ kdbxviewer (0.0.2-1) UNRELEASED; urgency=medium
   * Proper CSV export
   * Cleanups: documentation
 
- -- pepa65 <pepa65@passchier.net>  Thu, 12 Sep 2019 10:37:03 +0700
+ -- pepa65 <pepa65@passchier.net>  Thu, 17 May 2020 11:15:03 +0700
+
+kdbxviewer (0.1.5-1) UNRELEASED; urgency=medium
+
+  * Use of configfile to set default database file
