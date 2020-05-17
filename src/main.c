@@ -1,11 +1,11 @@
 // main.c
-# define VERSION "0.1.4"
+# define VERSION "0.1.5"
 # define CONFIGFILE "/.kdbxviewer"
 # define PATHLEN 2048
 
-#include <stdio.h> // for puts/(f)printf/fopen/getline
-#include <stdlib.h> // for exit
-#include <unistd.h> // for getopt
+#include <stdio.h>  // for puts/(f)printf/fopen/getline
+#include <stdlib.h>  // for exit
+#include <unistd.h>  // for getopt
 #include <string.h>
 
 #include <cx9r.h>

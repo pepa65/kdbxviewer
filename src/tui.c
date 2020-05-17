@@ -15,6 +15,7 @@
 
 int unmask;
 #define WIDE(str) stfl_ipool_towc(ipool, str)
+#define MAXFIELDLEN 32768
 
 #include "windows.stfl"
 
@@ -98,12 +99,14 @@ void updatecuritem() {
 
 void showdetails(cx9r_kt_entry *item) {
 	struct stfl_form *detform = stfl_create(stfl_code_detail);
-	char content[250];
+	char content[MAXFIELDLEN];
 	//stfl_set(detform, L"content", WIDE(content));
 	cx9r_kt_field *f = cx9r_kt_entry_get_fields(item);
 	while(f != NULL) {
-		snprintf(&content, 250, "<BOLD>%s : </>%s", f->name, f->value);
-		addlistitem(detform, L"textviewer", &content);
+		if (f->value != NULL) {
+			snprintf(&content, MAXFIELDLEN, "<BOLD>%s : </>%s", f->name, f->value);
+			addlistitem(detform, L"textviewer", &content);
+		}
 		f = cx9r_kt_field_get_next(f);
 	}
 	const wchar_t *event = 0;
