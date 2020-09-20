@@ -5,6 +5,7 @@
 * Using: cryptkeyper/libcx9r from https://github.com/jhagmar/cryptkeyper
 * After: https://github.com/luelista/kdbxviewer
 * License: GPLv2
+* Required: libgcrypt-dev libstfl-dev zlib1g-dev libexpat1-dev
 
 ## Usage
 ```

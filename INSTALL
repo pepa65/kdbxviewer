@@ -1,5 +1,8 @@
 # INSTALL
 
+## Install dependencies for build
+sudo apt install libgcrypt-dev libstfl-dev zlib1g-dev libexpat1-dev
+
 ## Get repository (requires git)
 git clone https://github.com/pepa65/kdbxviewer
 cd kdbxviewer
