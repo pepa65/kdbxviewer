@@ -244,8 +244,17 @@ int main(int argc, char **argv) {
 		if (command == 'i') run_interactive_mode(kdbxfile, kt);
 	}
 	else {
-		if (err == 16) warn("%sPassword invalid%s\n", WARNC, RESET);
-		else warn("%sDatabase error %d%s\n", WARNC, err, RESET);
+		warn(WARNC);
+		// See include/cx9r.h for error codes
+		if (err == 3 || err == 16) warn("Password invalid\n");
+		else if (err == CX9R_BAD_MAGIC)
+			warn("Not a KeePass databases\n");
+		else if (err == CX9R_UNSUPPORTED_VERSION)
+			warn("Unsupported KeePass database version\n");
+		else if (err == CX9R_FILE_READ_ERR)
+			warn("Error reading KeePass database\n");
+		else warn("KeePass Database error %d\n", err);
+		warn(RESET);
 	}
 	if (kt != NULL) cx9r_key_tree_free(kt);
 	return err;

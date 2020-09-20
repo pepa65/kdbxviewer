@@ -4,6 +4,9 @@
 git clone https://github.com/pepa65/kdbxviewer
 cd kdbxviewer
 
+## Install prerequisites
+sudo apt install libgcrypt20-dev libexpat1-dev zlib1g-dev libstfl-dev
+
 ## Build the `kdbxviewer` binary in the `bin` directory
 make
 
