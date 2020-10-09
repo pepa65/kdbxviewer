@@ -34,9 +34,9 @@ void addlistitem(struct stfl_form *f, wchar_t *id, char *text) {
 	wchar_t buf[256];
 	const wchar_t *quoted = stfl_quote( stfl_ipool_towc(ipool, text));
 	//printf("adding: %ls\n", quoted);
-	swprintf((wchar_t*)&buf, 255, L"{listitem text:%ls}", quoted);
+	swprintf(buf, 255, L"{listitem text:%ls}", quoted);
 	//printf("adding: %ls\n", buf);
-	stfl_modify(f, id, L"append", (wchar_t*)buf);
+	stfl_modify(f, id, L"append", buf);
 	if (nl) addlistitem(f, id, nl+1);
 }
 
@@ -47,8 +47,8 @@ void ktgroup_to_list(struct stfl_form *f, cx9r_kt_group *g) {
 	char buf[256];
 	while(c != NULL) {
 		//printf("ktgroup_to_list %s\n", cx9r_kt_group_get_name(c));
-		snprintf(&buf, 255, "+ % -30s ", cx9r_kt_group_get_name(c));
-		addlistitem(f, L"result", &buf);
+		snprintf(buf, 255, "+ %-30s ", cx9r_kt_group_get_name(c));
+		addlistitem(f, L"result", buf);
 		foldercount++;
 		c = cx9r_kt_group_get_next(c);
 	}
@@ -56,8 +56,8 @@ void ktgroup_to_list(struct stfl_form *f, cx9r_kt_group *g) {
 	while (e != NULL) {
 		//printf("entry %s\n", cx9r_kt_entry_get_name(e));
 		//snprintf(&buf, 255, "  % -30s % -30s %s", cx9r_kt_group_get_name(e), getfield(e, "UserName"), getfield(e, "URL"));
-		snprintf(&buf, 255, "  % -30s % -30s %s", cx9r_kt_entry_get_name(e), getfield(e, "UserName"), getfield(e, "URL"));
-		addlistitem(f, L"result", &buf);
+		snprintf(buf, 255, "  %-30s %-30s %s", cx9r_kt_entry_get_name(e), getfield(e, "UserName"), getfield(e, "URL"));
+		addlistitem(f, L"result", buf);
 		e = cx9r_kt_entry_get_next(e);
 	}
 }
@@ -104,8 +104,8 @@ void showdetails(cx9r_kt_entry *item) {
 	cx9r_kt_field *f = cx9r_kt_entry_get_fields(item);
 	while(f != NULL) {
 		if (f->value != NULL) {
-			snprintf(&content, MAXFIELDLEN, "<BOLD>%s : </>%s", f->name, f->value);
-			addlistitem(detform, L"textviewer", &content);
+			snprintf(content, MAXFIELDLEN, "<BOLD>%s : </>%s", f->name, f->value);
+			addlistitem(detform, L"textviewer", content);
 		}
 		f = cx9r_kt_field_get_next(f);
 	}
@@ -119,7 +119,7 @@ void showdetails(cx9r_kt_entry *item) {
 
 void updatelist() {
 	ktgroup_to_list(form, curGroup);
-	char buf[80]; char *pos = &buf; strcpy(pos, " /"); pos+=2; int i;
+	char buf[80]; char *pos = buf; strcpy(pos, " /"); pos+=2; int i;
 	for(i=0; i<level; i++) pos += snprintf(pos, 80-(pos-buf), "%s/", trail[i]);
 	stfl_set(form, L"pathtxt", WIDE(buf));
 }
@@ -146,9 +146,9 @@ void parentfolder() {
 		curGroup = cx9r_kt_group_get_parent(curGroup);
 		level--;
 		updatelist();
-		const wchar_t buf[6];
-		swprintf(&buf, 5, L"%d", level_pos[level]);
-		stfl_set(form, L"listidx", &buf);
+		wchar_t buf[6];
+		swprintf(buf, 5, L"%d", level_pos[level]);
+		stfl_set(form, L"listidx", buf);
 	}
 }
 
@@ -185,7 +185,7 @@ int run_interactive_mode(char *filename, cx9r_key_tree *kt)
 	updatestatus(L"result");
 	updatecuritem();
 	char buf[60];
-	snprintf((char*)&buf, 59, "kdbxviewer: %s", filename);
+	snprintf(buf, 59, "kdbxviewer: %s", filename);
 	stfl_set(form, L"filetxt", stfl_ipool_towc(ipool, buf));
 	stfl_ipool_flush(ipool);
 	const wchar_t *event = 0;
@@ -193,7 +193,7 @@ int run_interactive_mode(char *filename, cx9r_key_tree *kt)
 		event = stfl_run(form, 0);
 		wchar_t dbg[100];
 		const wchar_t *focus = stfl_get_focus(form);
-		swprintf((wchar_t*)&dbg, 59, L"%ls %ls", event, focus);
+		swprintf(dbg, 59, L"%ls %ls", event, focus);
 		stfl_set(form, L"debug", dbg);
 		if (event) {
 			if (!wcscmp(event, L"F4") || !wcscmp(event, L"^W") ||
